@@ -37,7 +37,6 @@ def rotate_xyz(x,y,z,angles=None,inverse=False):
         return x,y,z
 
     xyz = N.array([x,y,z])
-    m = N.eye(3)
     for dphi,dlon,dlat in angles:
         dphi*=c
         dlon*=c
@@ -54,7 +53,7 @@ def rotate_xyz(x,y,z,angles=None,inverse=False):
                       [0,1,0],
                       [N.sin(dlat), 0, N.cos(dlat)]])
 
-        m = N.dot(N.dot(m0,N.dot(m1,m2)),m)
+        m = N.dot(m0,N.dot(m1,m2))
 
     if inverse:
         m = N.linalg.inv(m)
@@ -62,11 +61,11 @@ def rotate_xyz(x,y,z,angles=None,inverse=False):
     xyz2 = N.dot(m,xyz)
     return xyz2
 
-def rotate_lonlat(lon,lat,angles=[(0,0)]):
+def rotate_lonlat(lon,lat,angles=[(0,0)], inverse=False):
     """ Rotate a set of longitude and latitude coordinate pairs.
     """
     xyz = N.array(lonlat2xyz(lon,lat))
-    xyz2 = rotate_xyz(*xyz,angles=angles)
+    xyz2 = rotate_xyz(*xyz,angles=angles, inverse=inverse)
     return xyz2lonlat(*xyz2,getr=False)
 
 
