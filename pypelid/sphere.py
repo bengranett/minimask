@@ -7,6 +7,26 @@ import numpy as N
 c = N.pi/180
 ic = 180/N.pi
 
+def distance(ra1,dec1,ra2,dec2):
+    """ compute distance between two points on the sphere using the haversine formula
+
+    Inputs
+    ------
+    ra1
+    dec1
+    ra2
+    dec2
+
+    Outputs
+    -------
+    distance (degree)
+    """
+    dra = c*(ra1 - ra2)
+    ddec = c*(dec1 - dec2)
+    r = N.sin(dra/2)**2 + N.cos(dec1*c)*N.cos(dec2*c)*N.sin(ddec/2)**2
+    return 2*N.arcsin(N.sqrt(r))*ic
+
+
 def lonlat2xyz(lon,lat,r=1):
     """ """
     x = r*N.cos(lon*c)*N.cos(lat*c)
@@ -42,8 +62,8 @@ def rotate_xyz(x,y,z,angles=None,inverse=False):
         dlon*=c
         dlat*=c
         m0 = N.array([[1,0,0],
-                      [0, N.cos(dphi),-N.sin(dphi)],
-                      [0, N.sin(dphi), N.cos(dphi)]])
+                      [0, N.cos(dphi),N.sin(dphi)],
+                      [0, -N.sin(dphi), N.cos(dphi)]])
 
         m1 = N.array([[N.cos(dlon),-N.sin(dlon),0],
                       [N.sin(dlon), N.cos(dlon),0],
@@ -53,7 +73,7 @@ def rotate_xyz(x,y,z,angles=None,inverse=False):
                       [0,1,0],
                       [N.sin(dlat), 0, N.cos(dlat)]])
 
-        m = N.dot(m0,N.dot(m1,m2))
+        m = N.dot(N.dot(m1,m2),m0)
 
     if inverse:
         m = N.linalg.inv(m)
@@ -70,12 +90,13 @@ def rotate_lonlat(lon,lat,angles=[(0,0)], inverse=False):
 
 
 def test_rotate_lonlat():
-    lon = N.array([0,0,0,0])
-    lat = N.array([0,30,45,90,])
+    lon = 0
+    lat = 0
 
-    
-    a,b = rotate_lonlat(lon,lat,angles=[(0,10,1)])
-    print a,b
+    print rotate_lonlat(lon,lat,angles=[(5,10,21)],inverse=False)
+
+    print rotate_lonlat(10,20,angles=[(5,10,20)],inverse=True)
+
     #assert(N.allclose(b,lat))
     #assert(N.allclose(a,10))
     exit()
