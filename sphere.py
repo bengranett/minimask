@@ -86,32 +86,3 @@ def rotate_lonlat(lon,lat,angles=[(0,0)], inverse=False):
     xyz = np.array(lonlat2xyz(lon,lat))
     xyz2 = rotate_xyz(*xyz,angles=angles, inverse=inverse)
     return xyz2lonlat(*xyz2,getr=False)
-
-
-def test_rotate_lonlat():
-    lon = 0
-    lat = 0
-
-    print rotate_lonlat(lon,lat,angles=[(5,10,21)],inverse=False)
-
-    print rotate_lonlat(10,20,angles=[(5,10,20)],inverse=True)
-
-    #assert(np.allclose(b,lat))
-    #assert(np.allclose(a,10))
-    exit()
-
-    a,b = rotate_lonlat(lon,lat,angles=[(0,-10)])
-    assert(np.allclose(b,lat-10))
-    assert(np.allclose(a,0))
-
-    lon = np.array([10,10,10,10])
-    lat = np.array([0,30,45,90,])
-
-
-    a,b = rotate_lonlat(lon,lat,angles=[(-10,-10),(10,0)])
-    assert(np.allclose(b,lat-10))
-    assert(np.allclose(a,lon))
-
-
-if __name__=="__main__":
-    test_rotate_lonlat()
