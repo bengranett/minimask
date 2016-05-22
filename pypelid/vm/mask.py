@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import pypelid.utils.sphere as sphere
 import pypelid.utils.misc as misc
@@ -118,6 +119,64 @@ class Mask:
 		-------
 		"""
 		raise Exception("Not implemented")
+
+	def write_mangle_poly(self, filename):
+		""" Write out a file compatable with Mangle polygon format.
+		Reference: http://space.mit.edu/~molly/mangle/manual/polygon.html
+
+		Inputs
+		------
+		filename
+		"""
+		with open(filename, 'w') as out:
+			for num in xrange(len(self.polygons)):
+				poly = self.polygons[num]
+				cm = self.cap_cm[num]
+				ncaps = len(poly)
+				out.write("polygon %i %i\n" % (num, ncaps)
+				for i in range(ncaps):
+					x,y,z = np.transpose(poly[i])
+					out.write("%10f %10f %10f %10f\n"%(x,y,z,cm[i]))
+		logging.info("Wrote %i polygons to %s", len(self.polygons), filename)
+
+	def read_mangle_poly(self, filename):
+		""" Read in a Mangle polygon file.
+		Reference: http://space.mit.edu/~molly/mangle/manual/polygon.html
+
+		Inputs
+		------
+		filename
+		"""
+		polygons = []
+		cap_cm = []
+		poly = None
+		cm = None
+		num = 0
+		line_num = 0
+		for line in file(filename):
+			line_num += 1
+			line = line.strip()
+			if line.startswith("#"): continue
+			words = line.split()
+			if words[0] == "polygon":
+				num += 1
+				if poly is not None:
+					if len(poly) == 0:
+						logging.warning("Loading %s (line %i): polygon %i has no caps.", filename, line_num, num)
+						continue
+					polygons.append(poly)
+					cap_cm.append(cm)
+				poly = []
+				cm = []
+				continue
+			x,y,z,c = [float(v) for v in w]
+			poly.append((x,y,z))
+			cm.append(c)
+		if poly is None:
+			logging.warning("Failed loading %s: no polygons found!"%filename)
+		polygons.append(poly)
+		cap_cm.append(cm)
+		logging.info("Loaded %s and got %i polygons", filename, len(poly))
 
 	def cap_contains(self, cap, cm, points):
 		""" Check if a point is contained in a single spherical cap.
