@@ -1,17 +1,20 @@
 import logging
 import numpy as np
+from pypelid import params
 import pypelid.utils.sphere as sphere
 import pypelid.utils.misc as misc
 import pypelid.vm.healpix_projection as hp
 from sklearn.neighbors import KDTree
+import time
 
 SPHERE_AREA = 4*np.pi*(180/np.pi)**2
 DEG2RAD = np.pi/180
 
 class Mask:
 	""" """
+	logger = logging.getLogger(__name__)
 
-	def __init__(self, pixel_mask_nside=64, pixel_mask_order='ring'):
+	def __init__(self, pixel_mask_nside=params.config['vm_nside'], pixel_mask_order='ring'):
 		""" """
 		self.polygons = []
 		self.cap_cm = []
@@ -66,20 +69,22 @@ class Mask:
 			self.centers.append(center)
 			self.costheta.append(costheta)
 			self.vertices.append(vertices)
-		logging.info("Loaded %i polygons", len(self.polygons))
+		self.logger.info("Loaded %i polygons", len(self.polygons))
 
 	def _build_lookup_tree(self):
 		""" """
 		# initialize the tree data structure for quick spatial lookups.
-		logging.debug("Building mask lookup tree")
+		self.logger.debug("Building mask lookup tree")
 		self.lookup_tree = KDTree(self.centers)
 		self.search_radius = np.arccos(np.min(self.costheta))
-		logging.debug("Mask search radius: %f", self.search_radius)
+		self.logger.debug("Mask search radius: %f", self.search_radius)
 
 	def _build_pixel_mask(self, expand_fact=1):
 		""" """
 		if self.lookup_tree is None:
 			self._build_lookup_tree()
+
+		self.logger.debug("pixel mask nside=%i order=%s",self.grid.nside, self.grid.order)
 
 		self.pixel_mask = np.zeros(self.grid.npix, dtype=bool)
 		pix = np.arange(self.grid.npix)
@@ -122,7 +127,7 @@ class Mask:
 				for i in range(ncaps):
 					x,y,z = np.transpose(poly[i])
 					out.write("%10f %10f %10f %10f\n"%(x,y,z,cm[i]))
-		logging.info("Wrote %i polygons to %s", len(self.polygons), filename)
+		self.logger.info("Wrote %i polygons to %s", len(self.polygons), filename)
 
 	def read_mangle_poly(self, filename):
 		""" Read in a Mangle polygon file.
@@ -147,7 +152,7 @@ class Mask:
 				num += 1
 				if poly is not None:
 					if len(poly) == 0:
-						logging.warning("Loading %s (line %i): polygon %i has no caps.", filename, line_num, num)
+						self.logger.warning("Loading %s (line %i): polygon %i has no caps.", filename, line_num, num)
 						continue
 					polygons.append(poly)
 					cap_cm.append(cm)
@@ -158,10 +163,10 @@ class Mask:
 			poly.append((x,y,z))
 			cm.append(c)
 		if poly is None:
-			logging.warning("Failed loading %s: no polygons found!"%filename)
+			self.logger.warning("Failed loading %s: no polygons found!"%filename)
 		polygons.append(poly)
 		cap_cm.append(cm)
-		logging.info("Loaded %s and got %i polygons", filename, len(poly))
+		self.logger.info("Loaded %s and got %i polygons", filename, len(poly))
 
 	def contains(self, lon, lat):
 		""" Check if points are inside mask.
@@ -262,6 +267,7 @@ class Mask:
 		-------
 		ra, dec
 		"""
+
 		if self.pixel_mask is None:
 			self._build_pixel_mask()
 
@@ -273,7 +279,7 @@ class Mask:
 
 		if len(cell)==0:
 			# if there are no cells return empty arrays
-			logging.warning("Effective area of the survey is 0.")
+			self.logger.warning("Effective area of the survey is 0.")
 			return np.array([]),np.array([])
 
 		if misc.is_number(cell):
@@ -284,9 +290,13 @@ class Mask:
 
 		n = int(SPHERE_AREA * 1. / self.grid.npix * n_cells * dens)
 
+		self.logger.debug("Random sampling: npoints=%i, ncells=%i",n,len(cell))
+		t0 = time.time()
+
 		lon,lat = self.grid.random_sample(cell, n)
 
 		sel = self.contains(lon,lat)
-		logging.debug("Random sampling success rate: %f",np.sum(sel)*1./len(sel))
+		self.logger.debug("done! elapsed time = %f sec",time.time()-t0)
+		self.logger.debug("Random sampling success rate: %f",np.sum(sel)*1./len(sel))
 
 		return lon[sel],lat[sel]
