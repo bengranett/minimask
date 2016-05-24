@@ -38,7 +38,14 @@ class Mask:
 		Outputs
 		-------
 		"""
+		self.logger.debug("import %i polygons", len(polygons))
+		count = 0
 		for vertices in polygons:
+			count += 1
+			if logger.isEnabledFor(logging.DEBUG):
+				step = len(polygons)//10
+				if not count % step: self.logger.debug("count %i: %f %%",count, count*100./len(polygons))
+
 			lon, lat = np.transpose(vertices)
 
 			xyz = np.transpose(sphere.lonlat2xyz(lon, lat))
@@ -56,7 +63,8 @@ class Mask:
 			ind1 = np.arange(nvert)
 			ind2 = (ind1 + 1) % nvert
 			poly = np.cross(xyz[ind2], xyz[ind1])
-
+			norm = np.sum(poly*poly,axis=1)**.5
+			poly = np.transpose(poly.T/norm)
 			# Ensure that the orientations are correct
 			# The angle between center and caps should be less than 90 deg
 			wrong = np.dot(poly, center) < 0
@@ -119,14 +127,15 @@ class Mask:
 		filename
 		"""
 		with open(filename, 'w') as out:
+			out.write("%i polygons\n"%len(self.polygons))
 			for num in xrange(len(self.polygons)):
 				poly = self.polygons[num]
 				cm = self.cap_cm[num]
 				ncaps = len(poly)
-				out.write("polygon %i %i\n" % (num, ncaps))
+				out.write("polygon %i ( %i caps, 1 weight, 0 pixel, 0 str):\n" % (num, ncaps))
 				for i in range(ncaps):
 					x,y,z = np.transpose(poly[i])
-					out.write("%10f %10f %10f %10f\n"%(x,y,z,cm[i]))
+					out.write("%3.15f %3.15f %3.15f %1.10f\n"%(x,y,z,cm[i]))
 		self.logger.info("Wrote %i polygons to %s", len(self.polygons), filename)
 
 	def read_mangle_poly(self, filename):
@@ -185,19 +194,30 @@ class Mask:
 		lon = np.array(lon)
 		lat = np.array(lat)
 
+		# convert lon,lat angles to unit vectors on the sphere
 		xyz = np.transpose(sphere.lonlat2xyz(lon, lat))
 
+		# find polygons near to the points
 		match_list = self.lookup_tree.query_radius(xyz, self.search_radius)
 
+		# array to store results, whether points are inside or outside
 		inside = np.zeros(lon.shape, dtype='bool')  # initially set to False
 
 		for i, matches in enumerate(match_list):
+			# loop through points
 			if len(matches)==0: continue
 			for poly_i in matches:
+				# loop through polygons near to the point
 				caps = self.polygons[poly_i]
 				cm = self.cap_cm[poly_i]
 
 				ncaps = len(caps)
+
+				# vectorizing this proves slower...
+				#inside[i] = np.all((1 - np.sum(xyz[i]*caps,axis=1)) < cm)
+
+				# loop through each cap and test if the point is inside.
+				# stop after the first fail
 				for j in range(ncaps):
 					r = (1 - np.dot(xyz[i], caps[j])) < cm[j]
 					if not r: break
@@ -245,7 +265,7 @@ class Mask:
 		matches = self._cells[matches[ii]]
 		return matches
 
-	def draw_random_position(self, dens, cell=None, nside=1, order='ring'):
+	def draw_random_position(self, dens=None, n=None, cell=None, nside=1, order='ring'):
 		""" Draw ra and dec pairs uniformly inside the mask.
 
 		By default the points are drawn from the full sphere.  If a healpix cell
@@ -288,7 +308,8 @@ class Mask:
 		else:
 			n_cells = len(cell)
 
-		n = int(SPHERE_AREA * 1. / self.grid.npix * n_cells * dens)
+		if dens is not None:
+			n = int(SPHERE_AREA * 1. / self.grid.npix * n_cells * dens)
 
 		self.logger.debug("Random sampling: npoints=%i, ncells=%i",n,len(cell))
 		t0 = time.time()
