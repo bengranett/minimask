@@ -42,7 +42,7 @@ class Mask:
 		count = 0
 		for vertices in polygons:
 			count += 1
-			if logger.isEnabledFor(logging.DEBUG):
+			if self.logger.isEnabledFor(logging.DEBUG):
 				step = len(polygons)//10
 				if not count % step: self.logger.debug("count %i: %f %%",count, count*100./len(polygons))
 
