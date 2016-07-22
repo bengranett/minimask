@@ -12,7 +12,7 @@ class HealpixProjector:
 	rad2deg = 180./np.pi
 	sphere_area = 4*np.pi
 
-	def __init__(self, nside=64, order='ring'):
+	def __init__(self, nside=64, resolution=None, order='ring'):
 		""" Compute the healpix projection.
 
 		Inputs
@@ -20,7 +20,10 @@ class HealpixProjector:
 		nside - int healpix resolution parameter
 		order - string healpix ordering scheme "ring" or "nest"
 		"""
-		self.nside = nside
+		if resolution is not None:
+			self.nside = 2**resolution
+		else:
+			self.nside = nside
 		self.npix = healpy.nside2npix(self.nside)
 		self.order = order.lower()
 
