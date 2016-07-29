@@ -2,13 +2,17 @@ import numpy as np
 import pypelid.utils.misc as misc
 import healpy
 
+# Pixel ordering modes
+NEST = 'nest'
+RING = 'ring'
+
 class HealpixProjector:
 	twothirds = 2./3
 	deg2rad = np.pi/180.
 	rad2deg = 180./np.pi
 	sphere_area = 4*np.pi
 
-	def __init__(self, nside=64, order='ring'):
+	def __init__(self, nside=64, resolution=None, order='ring'):
 		""" Compute the healpix projection.
 
 		Inputs
@@ -16,7 +20,10 @@ class HealpixProjector:
 		nside - int healpix resolution parameter
 		order - string healpix ordering scheme "ring" or "nest"
 		"""
-		self.nside = nside
+		if resolution is not None:
+			self.nside = 2**resolution
+		else:
+			self.nside = nside
 		self.npix = healpy.nside2npix(self.nside)
 		self.order = order.lower()
 
@@ -185,3 +192,27 @@ class HealpixProjector:
 		lat = 90 - self.rad2deg*theta_out
 
 		return lon,lat
+
+	def query_disc(self, lon, lat, radius, fact=4):
+		""" Find pixels that overlap with disks centered at (lon,lat)
+
+		Inputs
+		------
+		lon    - longitude (degr)
+		lat    - latitude (degr)
+		radius - radius of disk (degrees)
+		fact   - supersampling factor to find overlapping pixels 
+		         (see healpy.query_disc doc)
+
+		Output
+		------
+		pixel indices
+		"""
+		phi = np.array(lon) * self.deg2rad
+		theta = (90 - np.array(lat)) * self.deg2rad
+		vec = healpy.ang2vec(theta, phi)
+		pix = healpy.query_disc(self.nside, vec, radius*self.deg2rad, inclusive=True, fact=fact, nest=self.nest)
+		return pix
+
+	query_disk = query_disc
+
