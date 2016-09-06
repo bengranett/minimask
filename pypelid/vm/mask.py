@@ -14,7 +14,7 @@ class Mask:
 	""" """
 	logger = logging.getLogger(__name__)
 
-	def __init__(self, pixel_mask_nside=params.config['vm_nside'], pixel_mask_order='ring'):
+	def __init__(self, pixel_mask_nside=params.Config()['vm_nside'], pixel_mask_order='ring'):
 		""" """
 		self.polygons = []
 		self.cap_cm = []
