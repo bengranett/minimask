@@ -3,7 +3,7 @@ import numpy as np
 from pypelid import params
 import pypelid.utils.sphere as sphere
 import pypelid.utils.misc as misc
-import pypelid.vm.healpix_projection as hp
+import pypelid.utils.healpix_projection as hp
 from sklearn.neighbors import KDTree
 import time
 
