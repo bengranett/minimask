@@ -22,7 +22,7 @@ def distance(ra1,dec1,ra2,dec2):
 	"""
 	dra = c*(ra1 - ra2)
 	ddec = c*(dec1 - dec2)
-	r = np.sin(dra/2)**2 + np.cos(dec1*c)*np.cos(dec2*c)*np.sin(ddec/2)**2
+	r = np.sin(ddec/2)**2 + np.cos(dec1*c)*np.cos(dec2*c)*np.sin(dra/2)**2
 	return 2*np.arcsin(np.sqrt(r))*ic
 
 def lonlat2xyz(lon,lat,r=1):
