@@ -125,5 +125,5 @@ def sample_cap(n, lon=None, lat=None, xyz=None, theta=180, costheta=None):
 	x = np.cos(l) * np.sqrt(1-z**2)
 	y = np.sin(l) * np.sqrt(1-z**2)
 
-	xyzt = rotate_xyz(x,y,z,angles=[(0,lon,90-lat)])
+	xyzt = rotate_xyz(x,y,z,angles=[(0,lon,-90+lat)])
 	return xyz2lonlat(*xyzt)
