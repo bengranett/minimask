@@ -7,14 +7,15 @@ import pypelid.utils.healpix_projection as hp
 from sklearn.neighbors import KDTree
 import time
 
-SPHERE_AREA = 4*np.pi*(180/np.pi)**2
-DEG2RAD = np.pi/180
+SPHERE_AREA = 4 * np.pi * (180 / np.pi)**2
+DEG2RAD = np.pi / 180
+
 
 class Mask:
 	""" Routines to process polygon masks. """
 	logger = logging.getLogger(__name__)
 
-	def __init__(self, pixel_mask_nside=None, pixel_mask_order='ring'):
+	def __init__(self, pixel_mask_nside=None, pixel_mask_order=hp.RING):
 		""" Routines to process polygon masks.
 
 		A partitioning of the polygon mask will be created using a Healpix grid.
@@ -56,15 +57,15 @@ class Mask:
 		Raises
 		-------
 		Not enough vertices! if N<3.
-
 		"""
 		self.logger.debug("import %i polygons", len(polygons))
 		count = 0
 		for vertices in polygons:
 			count += 1
 			if self.logger.isEnabledFor(logging.DEBUG):
-				step = len(polygons)//10
-				if not count % step: self.logger.debug("count %i: %f %%",count, count*100./len(polygons))
+				step = len(polygons) // 10
+				if not count % step:
+					self.logger.debug("count %i: %f %%", count, count * 100. / len(polygons))
 
 			lon, lat = np.transpose(vertices)
 
@@ -78,13 +79,13 @@ class Mask:
 
 			nvert = len(lon)
 			if nvert < 3:
-				raise Exception("Not enough vertices! (%i)"%nvert)
+				raise Exception("Not enough vertices! (%i)" % nvert)
 
 			ind1 = np.arange(nvert)
 			ind2 = (ind1 + 1) % nvert
 			poly = np.cross(xyz[ind2], xyz[ind1])
-			norm = np.sum(poly*poly,axis=1)**.5
-			poly = np.transpose(poly.T/norm)
+			norm = np.sum(poly * poly, axis=1)**.5
+			poly = np.transpose(poly.T / norm)
 			# Ensure that the orientations are correct
 			# The angle between center and caps should be less than 90 deg
 			wrong = np.dot(poly, center) < 0
@@ -112,15 +113,15 @@ class Mask:
 		if self.lookup_tree is None:
 			self._build_lookup_tree()
 
-		self.logger.debug("pixel mask nside=%i order=%s",self.grid.nside, self.grid.order)
+		self.logger.debug("pixel mask nside=%i order=%s", self.grid.nside, self.grid.order)
 
 		self.pixel_mask = np.zeros(self.grid.npix, dtype=bool)
 		pix = np.arange(self.grid.npix)
 		xyz = np.transpose(self.grid.pix2vec(pix))
 		radius = expand_fact * self.grid.pixel_size
 		matches = self.lookup_tree.query_radius(xyz, radius)
-		for i,m in enumerate(matches):
-			if len(m)>0:
+		for i, m in enumerate(matches):
+			if len(m) > 0:
 				self.pixel_mask[i] = True
 		self._cells = np.where(self.pixel_mask > 0)[0]
 		xyz = np.transpose(self.grid.pix2vec(self._cells))
@@ -149,15 +150,15 @@ class Mask:
 			Path to output file.
 		"""
 		with open(filename, 'w') as out:
-			out.write("%i polygons\n"%len(self.polygons))
+			out.write("%i polygons\n" % len(self.polygons))
 			for num in xrange(len(self.polygons)):
 				poly = self.polygons[num]
 				cm = self.cap_cm[num]
 				ncaps = len(poly)
 				out.write("polygon %i ( %i caps, 1 weight, 0 pixel, 0 str):\n" % (num, ncaps))
 				for i in range(ncaps):
-					x,y,z = np.transpose(poly[i])
-					out.write("%3.15f %3.15f %3.15f %1.10f\n"%(x,y,z,cm[i]))
+					x, y, z = np.transpose(poly[i])
+					out.write("%3.15f %3.15f %3.15f %1.10f\n" % (x, y, z, cm[i]))
 		self.logger.info("Wrote %i polygons to %s", len(self.polygons), filename)
 
 	def read_mangle_poly(self, filename):
@@ -179,24 +180,26 @@ class Mask:
 		for line in file(filename):
 			line_num += 1
 			line = line.strip()
-			if line.startswith("#"): continue
+			if line.startswith("#"):
+				continue
 			words = line.split()
 			if words[0] == "polygon":
 				num += 1
 				if poly is not None:
 					if len(poly) == 0:
-						self.logger.warning("Loading %s (line %i): polygon %i has no caps.", filename, line_num, num)
+						self.logger.warning("Loading %s (line %i): polygon %i has no caps.",
+							filename, line_num, num)
 						continue
 					polygons.append(poly)
 					cap_cm.append(cm)
 				poly = []
 				cm = []
 				continue
-			x,y,z,c = [float(v) for v in w]
-			poly.append((x,y,z))
+			x, y, z, c = [float(v) for v in w]
+			poly.append((x, y, z))
 			cm.append(c)
 		if poly is None:
-			self.logger.warning("Failed loading %s: no polygons found!"%filename)
+			self.logger.warning("Failed loading %s: no polygons found!" % filename)
 		polygons.append(poly)
 		cap_cm.append(cm)
 		self.logger.info("Loaded %s and got %i polygons", filename, len(poly))
@@ -232,7 +235,8 @@ class Mask:
 
 		for i, matches in enumerate(match_list):
 			# loop through points
-			if len(matches)==0: continue
+			if len(matches) == 0:
+				continue
 			for poly_i in matches:
 				# loop through polygons near to the point
 				caps = self.polygons[poly_i]
@@ -241,22 +245,22 @@ class Mask:
 				ncaps = len(caps)
 
 				# vectorizing this proves slower...
-				#inside[i] = np.all((1 - np.sum(xyz[i]*caps,axis=1)) < cm)
+				# inside[i] = np.all((1 - np.sum(xyz[i]*caps,axis=1)) < cm)
 
 				# loop through each cap and test if the point is inside.
 				# stop after the first fail
 				for j in range(ncaps):
 					r = (1 - np.dot(xyz[i], caps[j])) < cm[j]
-					if not r: break
+					if not r:
+						break
 				if r:
 					inside[i] = r  # set to True
 					break
 		return inside
 
-
 	def _select_cells(self, coarse_cell, coarse_nside, coarse_order):
 		""" Private function returns list of cells in the internal healpix map
-		that fall in a given patch of sky.  
+		that fall in a given patch of sky.
 
 		The resoultion of the internal map must be higher than the coarse resolution
 		input here.
@@ -291,13 +295,14 @@ class Mask:
 		matches = self.pixel_lookup.query_radius(xyz, radius)
 		matches = np.concatenate(matches)
 
-		xyz = np.take(self.pixel_lookup.data,matches,axis=0)
+		xyz = np.take(self.pixel_lookup.data, matches, axis=0)
 		pix = coarse_grid.vec2pix(*xyz.transpose())
 		ii = pix == coarse_cell
 		matches = self._cells[matches[ii]]
 		return matches
 
-	def draw_random_position(self, dens=None, n=None, cell=None, nside=1, order='ring'):
+	def draw_random_position(self, dens=None, n=None,
+							cell=None, nside=1, order=hp.RING):
 		""" Draw longitude and latitude pairs uniformly inside the mask.
 
 		By default the points are drawn from the full sphere.  If a healpix cell
@@ -333,10 +338,10 @@ class Mask:
 			# sample only selected patches defined by a healpix cell
 			cell = self._select_cells(cell, nside, order)
 
-		if len(cell)==0:
+		if len(cell) == 0:
 			# if there are no cells return empty arrays
 			self.logger.warning("Effective area of the survey is 0.")
-			return np.array([]),np.array([])
+			return np.array([]), np.array([])
 
 		if misc.is_number(cell):
 			n_cells = 1
@@ -347,13 +352,13 @@ class Mask:
 		if dens is not None:
 			n = int(SPHERE_AREA * 1. / self.grid.npix * n_cells * dens)
 
-		self.logger.debug("Random sampling: npoints=%i, ncells=%i",n,len(cell))
+		self.logger.debug("Random sampling: npoints=%i, ncells=%i", n, len(cell))
 		t0 = time.time()
 
-		lon,lat = self.grid.random_sample(cell, n)
+		lon, lat = self.grid.random_sample(cell, n)
 
-		sel = self.contains(lon,lat)
-		self.logger.debug("done! elapsed time = %f sec",time.time()-t0)
-		self.logger.debug("Random sampling success rate: %f",np.sum(sel)*1./len(sel))
+		sel = self.contains(lon, lat)
+		self.logger.debug("done! elapsed time = %f sec", time.time() - t0)
+		self.logger.debug("Random sampling success rate: %f", np.sum(sel) * 1. / len(sel))
 
-		return lon[sel],lat[sel]
+		return lon[sel], lat[sel]
