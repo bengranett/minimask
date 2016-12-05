@@ -11,11 +11,23 @@ SPHERE_AREA = 4*np.pi*(180/np.pi)**2
 DEG2RAD = np.pi/180
 
 class Mask:
-	""" """
+	""" Routines to process polygon masks. """
 	logger = logging.getLogger(__name__)
 
 	def __init__(self, pixel_mask_nside=params.Config()['vm_nside'], pixel_mask_order='ring'):
-		""" """
+		""" Routines to process polygon masks.
+
+		A partitioning of the polygon mask will be created using a Healpix grid.
+		The resolution and ordering of this grid may be given as arguments.
+
+		Parameters
+		----------
+		pixel_mask_nside : int
+			Healpix resolution n_side for partitioning the polygon mask.
+		pixel_mask_order : str
+			Healpix ordering for partitioning the polygonmask (ring or nest).
+
+		"""
 		self.polygons = []
 		self.cap_cm = []
 		self.centers = []
@@ -31,12 +43,18 @@ class Mask:
 		""" Import a mask as a list of longitude, latitude vertices representing
 		convex polygons.
 
-		Inputs
-		------
-		polygons -
+		A polygon with N (lon, lat) vertices is specified as a two-dim array
+		with shape (N,2).  It is necessary that the number of vertices is N>2.
 
-		Outputs
+		Parameters
+		----------
+		polygons : list
+			A list of arrays representing polygons.
+
+		Raises
 		-------
+		Not enough vertices! if N<3.
+
 		"""
 		self.logger.debug("import %i polygons", len(polygons))
 		count = 0
@@ -80,15 +98,15 @@ class Mask:
 		self.logger.info("Loaded %i polygons", len(self.polygons))
 
 	def _build_lookup_tree(self):
-		""" """
-		# initialize the tree data structure for quick spatial lookups.
+		""" Private function to initialize lookup trees for fast spatial queries.
+		"""
 		self.logger.debug("Building mask lookup tree")
 		self.lookup_tree = KDTree(self.centers)
 		self.search_radius = np.arccos(np.min(self.costheta))
 		self.logger.debug("Mask search radius: %f", self.search_radius)
 
 	def _build_pixel_mask(self, expand_fact=1):
-		""" """
+		""" Private function to initialize partitioning grid using Healpix."""
 		if self.lookup_tree is None:
 			self._build_lookup_tree()
 
@@ -107,24 +125,26 @@ class Mask:
 		self.pixel_lookup = KDTree(xyz)
 
 	def write_mangle_fits(self, filename):
-		""" Write out a file compatable with mangle.  Let's use FITS format?
+		""" Write out a mask file in FITS format compatable with mangle.
+		Not implemented.
 
-		Inputs
-		------
-		filename
-
-		Outputs
-		-------
+		Parameters
+		----------
+		filename : str
+			Path to output file.
 		"""
 		raise Exception("Not implemented")
 
 	def write_mangle_poly(self, filename):
-		""" Write out a file compatable with Mangle polygon format.
+		""" Write out a mask file in text format compatable with the Mangle
+		polygon format.
+
 		Reference: http://space.mit.edu/~molly/mangle/manual/polygon.html
 
-		Inputs
-		------
-		filename
+		Parameters
+		----------
+		filename : str
+			Path to output file.
 		"""
 		with open(filename, 'w') as out:
 			out.write("%i polygons\n"%len(self.polygons))
@@ -139,12 +159,14 @@ class Mask:
 		self.logger.info("Wrote %i polygons to %s", len(self.polygons), filename)
 
 	def read_mangle_poly(self, filename):
-		""" Read in a Mangle polygon file.
+		""" Read in a mask file in Mangle polygon format.
+
 		Reference: http://space.mit.edu/~molly/mangle/manual/polygon.html
 
-		Inputs
-		------
-		filename
+		Parameters
+		----------
+		filename : str
+			Path to output file.
 		"""
 		polygons = []
 		cap_cm = []
@@ -179,12 +201,15 @@ class Mask:
 
 	def contains(self, lon, lat):
 		""" Check if points are inside mask.
-		Inputs
-		------
-		lon - longitude (degr)
-		lat - latitude (degr)
 
-		Outputs
+		Parameters
+		----------
+		lon : float ndarray
+			longitude coordinate (degr)
+		lat : float ndarray
+			latitude coordinate (degr)
+
+		Returns
 		-------
 		bool array
 		"""
@@ -228,19 +253,24 @@ class Mask:
 
 
 	def _select_cells(self, coarse_cell, coarse_nside, coarse_order):
-		""" Returns list of cells in the internal healpix map that fall in a
-		given patch of sky.  The resoultion of the internal map must be higher
-		than the coarse resolution input here.
+		""" Private function returns list of cells in the internal healpix map
+		that fall in a given patch of sky.  
 
-		Inputs
-		------
-		coarse_cell - cell number or list defining patch of sky
-		coarse_nside - nside of pixelization
-		coarse_order - pixelization order
+		The resoultion of the internal map must be higher than the coarse resolution
+		input here.
 
-		Outputs
+		Parameters
+		----------
+		coarse_cell : int
+			cell number or list defining patch of sky
+		coarse_nside : int
+			nside of pixelization
+		coarse_order : str
+			pixelization order ('ring' or 'nest')
+
+		Returns
 		-------
-		list of cells in pixel map
+		list : cell indices in pixel map
 		"""
 		# If the resolution given is higher than the internal pixel map,
 		# rebuild the map at an even higher resolution.
@@ -266,26 +296,30 @@ class Mask:
 		return matches
 
 	def draw_random_position(self, dens=None, n=None, cell=None, nside=1, order='ring'):
-		""" Draw ra and dec pairs uniformly inside the mask.
+		""" Draw longitude and latitude pairs uniformly inside the mask.
 
 		By default the points are drawn from the full sphere.  If a healpix cell
 		number (or list of numbers) is given then randoms will be drawn from
 		within those cells only.  In this mode both the healpix nside parameter
 		and ordering scheme should be given as arguments.
 
-		After drawing randoms the ones that fall outside the pointing mask are
+		After drawing randoms the ones that fall outside the polygon mask are
 		discarded.
 
-		Inputs
-		------
-		dens - number density of samples (number per square degree)
-		cell - optional healpix cell number or list of cell numbers
-		nside - healpix nside parameter
-		nest - if True use Nest otherwise use Ring ordering
+		Parameters
+		----------
+		dens : float
+			number density of samples (number per square degree)
+		cell : int or list
+			optional healpix cell number or list of cell numbers
+		nside : int
+			healpix nside parameter
+		nest : bool
+			if True use Nest otherwise use Ring ordering
 
-		Outputs
+		Returns
 		-------
-		ra, dec
+		lon, lat : random coordinates
 		"""
 
 		if self.pixel_mask is None:
