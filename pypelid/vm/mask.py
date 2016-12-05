@@ -14,7 +14,7 @@ class Mask:
 	""" Routines to process polygon masks. """
 	logger = logging.getLogger(__name__)
 
-	def __init__(self, pixel_mask_nside=params.Config()['vm_nside'], pixel_mask_order='ring'):
+	def __init__(self, pixel_mask_nside=None, pixel_mask_order='ring'):
 		""" Routines to process polygon masks.
 
 		A partitioning of the polygon mask will be created using a Healpix grid.
@@ -36,6 +36,8 @@ class Mask:
 		self.lookup_tree = None
 
 		# initialize pixel mask
+		if pixel_mask_nside is None:
+			pixel_mask_nside = params.Config()['vm_nside']
 		self.grid = hp.HealpixProjector(pixel_mask_nside, pixel_mask_order)
 		self.pixel_mask = None
 
