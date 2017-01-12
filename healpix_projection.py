@@ -112,7 +112,7 @@ class HealpixProjector:
 			self.nside = 2**resolution
 		else:
 			self.nside = nside
-		self.npix = healpy.nside2npix(self.nside)
+		self.npix = self.nside2npix(self.nside)
 		self.order = order.lower()
 
 		self.nest = False
@@ -120,6 +120,23 @@ class HealpixProjector:
 			self.nest = True
 
 		self.pixel_size = np.sqrt(self.sphere_area / self.npix)
+
+	def nside2npix(self, nside):
+		""" Compute number of pixels in a map with given nside.
+
+		Uses the formula:
+			N_pix = 12*n_side**2
+
+		Parameters
+		------
+		nside : int
+			Healpix n_side parameter.
+
+		Returns
+		--------
+		number of pixels : int
+		"""
+		return 12 * nside * nside
 
 	def ang2pix(self, lon, lat):
 		""" Convert angle on the sky to Healpix pixel number.
