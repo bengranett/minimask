@@ -1,5 +1,4 @@
 import numpy as np
-from pypelid import params
 from pypelid.utils import sphere
 import logging
 

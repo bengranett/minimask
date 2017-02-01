@@ -1,6 +1,5 @@
 import logging
 import numpy as np
-from pypelid import params
 import pypelid.utils.sphere as sphere
 import pypelid.utils.misc as misc
 import pypelid.utils.healpix_projection as hp
