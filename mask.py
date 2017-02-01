@@ -1,10 +1,13 @@
 import logging
 import numpy as np
+from pypelid.utils.config import Defaults, Param
 import pypelid.utils.sphere as sphere
 import pypelid.utils.misc as misc
 import pypelid.utils.healpix_projection as hp
 from sklearn.neighbors import KDTree
 import time
+
+import cPickle as pickle
 
 SPHERE_AREA = 4 * np.pi * (180 / np.pi)**2
 DEG2RAD = np.pi / 180
@@ -14,7 +17,14 @@ class Mask:
 	""" Routines to process polygon masks. """
 	logger = logging.getLogger(__name__)
 
-	def __init__(self, pixel_mask_nside=None, pixel_mask_order=hp.RING):
+	_default_params = Defaults(
+		Param("pixel_mask_nside", metavar='n', default=256, type=int,
+			help="Healpix resolution n_side for partitioning the polygon mask."),
+		Param("pixel_mask_order", metavar="order", default='ring', type=str, choices=('ring', 'nest'),
+			help="Healpix ordering for partitioning the polygonmask (ring or nest)."),
+	)
+
+	def __init__(self, config={}, **kwargs):
 		""" Routines to process polygon masks.
 
 		A partitioning of the polygon mask will be created using a Healpix grid.
@@ -28,6 +38,19 @@ class Mask:
 			Healpix ordering for partitioning the polygonmask (ring or nest).
 
 		"""
+		self.config = config
+
+		# merge key,value arguments and config dict
+		for key, value in kwargs.items():
+			self.config[key] = value
+
+		# Add any parameters that are missing
+		for key, def_value in self._default_params.items():
+			try:
+				self.config[key]
+			except KeyError:
+				self.config[key] = def_value
+
 		self.polygons = []
 		self.cap_cm = []
 		self.centers = []
@@ -36,9 +59,7 @@ class Mask:
 		self.lookup_tree = None
 
 		# initialize pixel mask
-		if pixel_mask_nside is None:
-			pixel_mask_nside = params.Config()['vm_nside']
-		self.grid = hp.HealpixProjector(pixel_mask_nside, pixel_mask_order)
+		self.grid = hp.HealpixProjector(nside=self.config['pixel_mask_nside'], order=self.config['pixel_mask_order'])
 		self.pixel_mask = None
 
 	def import_vertices(self, polygons):
@@ -125,6 +146,20 @@ class Mask:
 		self._cells = np.where(self.pixel_mask > 0)[0]
 		xyz = np.transpose(self.grid.pix2vec(self._cells))
 		self.pixel_lookup = KDTree(xyz)
+
+	def dump(self, filename):
+		""" """
+		data = self.polygons, self.cap_cm, self.centers, self.costheta
+		t0 = time.time()
+		pickle.dump(data, file(filename, "w"))
+		dt = time.time()-t0
+		self.logger.info("Wrote data to file %s.  time=%s", filename, dt)
+
+	def load(self, filename):
+		""" """
+		data = pickle.load(file(filename))
+		self.polygons, self.cap_cm, self.centers, self.costheta = data
+		self.logger.info("Loaded data from file %s", filename)
 
 	def write_mangle_fits(self, filename):
 		""" Write out a mask file in FITS format compatable with mangle.
