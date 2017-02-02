@@ -153,13 +153,16 @@ class Mask:
 		t0 = time.time()
 		pickle.dump(data, file(filename, "w"))
 		dt = time.time()-t0
-		self.logger.info("Wrote data to file %s.  time=%s", filename, dt)
+		self.logger.info("Wrote data to file %s.  time=%f", filename, dt)
 
 	def load(self, filename):
 		""" """
+		self.logger.debug("Loading mask file %s ...", filename)
+		t0 = time.time()
 		data = pickle.load(file(filename))
+		dt = time.time()-t0
 		self.polygons, self.cap_cm, self.centers, self.costheta = data
-		self.logger.info("Loaded data from file %s", filename)
+		self.logger.info("Loaded data from file %s.  dt=%f", filename, dt)
 
 	def write_mangle_fits(self, filename):
 		""" Write out a mask file in FITS format compatable with mangle.
@@ -315,14 +318,14 @@ class Mask:
 		# If the resolution given is higher than the internal pixel map,
 		# rebuild the map at an even higher resolution.
 		if coarse_nside > self.grid.nside:
-			self.grid = hp.HealpixProjector(2 * coarse_nside, coarse_order)
+			self.grid = hp.HealpixProjector(nside=2 * coarse_nside, order=coarse_order)
 			self._build_pixel_mask()
 
 		# make sure input is iterable
 		if misc.is_number(coarse_cell):
 			coarse_cell = [int(coarse_cell)]
 
-		coarse_grid = hp.HealpixProjector(coarse_nside, coarse_order)
+		coarse_grid = hp.HealpixProjector(nside=coarse_nside, order=coarse_order)
 		radius = coarse_grid.pixel_size
 
 		xyz = np.transpose(coarse_grid.pix2vec(coarse_cell))
@@ -362,6 +365,8 @@ class Mask:
 		-------
 		lon, lat : random coordinates
 		"""
+		if cell is not None:
+			self.logger.debug("selected cell: %s (nside %s)", cell, nside)
 
 		if self.pixel_mask is None:
 			self._build_pixel_mask()
