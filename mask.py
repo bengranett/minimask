@@ -379,7 +379,7 @@ class Mask:
 
 		if len(cell) == 0:
 			# if there are no cells return empty arrays
-			self.logger.warning("Effective area of the survey is 0.")
+			# self.logger.warning("Effective area of the survey is 0.")
 			return np.array([]), np.array([])
 
 		if misc.is_number(cell):
@@ -393,6 +393,7 @@ class Mask:
 
 		self.logger.debug("Random sampling: npoints=%i, ncells=%i", n, len(cell))
 		t0 = time.time()
+
 
 		lon, lat = self.grid.random_sample(cell, n)
 
