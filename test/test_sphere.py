@@ -1,7 +1,7 @@
 
 import sys
 import numpy as np
-import pypelid.utils.sphere as sphere
+import sphere
 
 
 def check_close(a, b, rtol=1e-5):

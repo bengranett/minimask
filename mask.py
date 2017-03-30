@@ -1,13 +1,12 @@
 import logging
 import numpy as np
-from pypelid.utils.config import Defaults, Param
-import pypelid.utils.sphere as sphere
-import pypelid.utils.misc as misc
-import pypelid.utils.healpix_projection as hp
-from sklearn.neighbors import KDTree
 import time
-
 import cPickle as pickle
+from sklearn.neighbors import KDTree
+
+import sphere
+import healpix_projection as hp
+import misc
 
 SPHERE_AREA = 4 * np.pi * (180 / np.pi)**2
 DEG2RAD = np.pi / 180
@@ -17,14 +16,7 @@ class Mask:
 	""" Routines to process polygon masks. """
 	logger = logging.getLogger(__name__)
 
-	_default_params = Defaults(
-		Param("pixel_mask_nside", metavar='n', default=256, type=int,
-			help="Healpix resolution n_side for partitioning the polygon mask."),
-		Param("pixel_mask_order", metavar="order", default='ring', type=str, choices=('ring', 'nest'),
-			help="Healpix ordering for partitioning the polygonmask (ring or nest)."),
-	)
-
-	def __init__(self, config={}, **kwargs):
+	def __init__(self, pixel_mask_nside=256, pixel_mask_order='ring'):
 		""" Routines to process polygon masks.
 
 		A partitioning of the polygon mask will be created using a Healpix grid.
@@ -38,18 +30,10 @@ class Mask:
 			Healpix ordering for partitioning the polygonmask (ring or nest).
 
 		"""
-		self.config = config
-
-		# merge key,value arguments and config dict
-		for key, value in kwargs.items():
-			self.config[key] = value
-
-		# Add any parameters that are missing
-		for key, def_value in self._default_params.items():
-			try:
-				self.config[key]
-			except KeyError:
-				self.config[key] = def_value
+		self.config = {
+			'pixel_mask_nside': pixel_mask_nside,
+			'pixel_mask_order': pixel_mask_order
+		}
 
 		self.polygons = []
 		self.cap_cm = []

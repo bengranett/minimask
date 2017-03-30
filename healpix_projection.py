@@ -1,6 +1,6 @@
 import numpy as np
-import pypelid.utils.misc as misc
 import healpy
+import misc
 
 # Pixel ordering modes
 NEST = 'nest'
