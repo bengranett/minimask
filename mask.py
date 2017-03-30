@@ -57,6 +57,7 @@ class Mask:
 		self.costheta = []
 		self.vertices = []
 		self.lookup_tree = None
+		self.fullsky = True
 
 		# initialize pixel mask
 		self.grid = hp.HealpixProjector(nside=self.config['pixel_mask_nside'], order=self.config['pixel_mask_order'])
@@ -83,7 +84,7 @@ class Mask:
 		for vertices in polygons:
 			count += 1
 			if self.logger.isEnabledFor(logging.DEBUG):
-				step = len(polygons) // 10
+				step = max(1, len(polygons) // 10)
 				if not count % step:
 					self.logger.debug("count %i: %f %%", count, count * 100. / len(polygons))
 
@@ -118,11 +119,14 @@ class Mask:
 			self.centers.append(center)
 			self.costheta.append(costheta)
 			self.vertices.append(vertices)
+		self.fullsky = False
 		self.logger.info("Loaded %i polygons", len(self.polygons))
 
 	def _build_lookup_tree(self):
 		""" Private function to initialize lookup trees for fast spatial queries.
 		"""
+		if self.fullsky:
+			return
 		self.logger.debug("Building mask lookup tree")
 		self.lookup_tree = KDTree(self.centers)
 		self.search_radius = np.arccos(np.min(self.costheta))
@@ -130,19 +134,23 @@ class Mask:
 
 	def _build_pixel_mask(self, expand_fact=1):
 		""" Private function to initialize partitioning grid using Healpix."""
-		if self.lookup_tree is None:
-			self._build_lookup_tree()
+		if self.fullsky:
+			# full sky
+			self.pixel_mask = np.ones(self.grid.npix, dtype=bool)
+		else:
+			if self.lookup_tree is None:
+				self._build_lookup_tree()
 
-		self.logger.debug("pixel mask nside=%i order=%s", self.grid.nside, self.grid.order)
+			self.logger.debug("pixel mask nside=%i order=%s", self.grid.nside, self.grid.order)
 
-		self.pixel_mask = np.zeros(self.grid.npix, dtype=bool)
-		pix = np.arange(self.grid.npix)
-		xyz = np.transpose(self.grid.pix2vec(pix))
-		radius = expand_fact * self.grid.pixel_size
-		matches = self.lookup_tree.query_radius(xyz, radius)
-		for i, m in enumerate(matches):
-			if len(m) > 0:
-				self.pixel_mask[i] = True
+			self.pixel_mask = np.zeros(self.grid.npix, dtype=bool)
+			pix = np.arange(self.grid.npix)
+			xyz = np.transpose(self.grid.pix2vec(pix))
+			radius = max(expand_fact * self.grid.pixel_size, self.search_radius)
+			matches = self.lookup_tree.query_radius(xyz, radius)
+			for i, m in enumerate(matches):
+				if len(m) > 0:
+					self.pixel_mask[i] = True
 		self._cells = np.where(self.pixel_mask > 0)[0]
 		xyz = np.transpose(self.grid.pix2vec(self._cells))
 		self.pixel_lookup = KDTree(xyz)
@@ -162,7 +170,9 @@ class Mask:
 		data = pickle.load(file(filename))
 		dt = time.time()-t0
 		self.polygons, self.cap_cm, self.centers, self.costheta = data
-		self.logger.info("Loaded data from file %s.  dt=%f", filename, dt)
+		if len(self.centers) > 0:
+			self.fullsky = False
+		self.logger.info("Loaded data from file %s.  num centers: %i, dt=%f", filename, len(self.centers), dt)
 
 	def write_mangle_fits(self, filename):
 		""" Write out a mask file in FITS format compatable with mangle.
@@ -255,6 +265,9 @@ class Mask:
 		-------
 		bool array
 		"""
+		if self.fullsky:
+			return np.ones(len(lon), dtype=bool)
+
 		if self.lookup_tree is None:
 			self._build_lookup_tree()
 
@@ -394,7 +407,6 @@ class Mask:
 		self.logger.debug("Random sampling: npoints=%i, ncells=%i", n, len(cell))
 		t0 = time.time()
 
-
 		lon, lat = self.grid.random_sample(cell, n)
 
 		sel = self.contains(lon, lat)
@@ -402,3 +414,5 @@ class Mask:
 		self.logger.debug("Random sampling success rate: %f", np.sum(sel) * 1. / len(sel))
 
 		return lon[sel], lat[sel]
+
+	sample = draw_random_position
