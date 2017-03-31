@@ -311,6 +311,8 @@ class HealpixProjector:
 		if misc.is_number(pixels):
 			pixels = [int(pixels)]
 
+		n = int(n)
+
 		# select pixels to sample
 		if len(pixels) == 1:
 			pix_i = np.zeros(n, dtype=int)
