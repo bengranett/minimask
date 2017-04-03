@@ -3,6 +3,7 @@ import numpy as np
 import time
 import cPickle as pickle
 from sklearn.neighbors import KDTree
+from copy import deepcopy
 
 import sphere
 import healpix_projection as hp
@@ -10,6 +11,58 @@ import misc
 
 SPHERE_AREA = 4 * np.pi * (180 / np.pi)**2
 DEG2RAD = np.pi / 180
+
+
+class spherical_polygon(object):
+	""" """
+	def __init__(self, vertices=None):
+		""" """
+		if vertices is not None:
+			self.vertices_to_caps(vertices)
+
+	def vertices_to_caps(self, vertices):
+		""" Convert a polygon defined by lon,lat vertices on a sphere
+		to spherical cap format.
+
+		Parameters
+		----------
+		vertices
+		"""
+		lon, lat = np.transpose(vertices)
+
+		xyz = np.transpose(sphere.lonlat2xyz(lon, lat))
+
+		self.center = np.sum(xyz, axis=0)
+		norm = np.sqrt(np.sum(center**2))
+		self.center /= norm
+
+		self.costheta = np.min(np.dot(xyz, center))
+
+		nvert = len(lon)
+		if nvert < 3:
+			raise Exception("Not enough vertices! (%i)" % nvert)
+
+		ind1 = np.arange(nvert)
+		ind2 = (ind1 + 1) % nvert
+		self.poly = np.cross(xyz[ind2], xyz[ind1])
+		norm = np.sum(poly * poly, axis=1)**.5
+		self.poly = np.transpose(poly.T / norm)
+		# Ensure that the orientations are correct
+		# The angle between center and caps should be less than 90 deg
+		wrong = np.dot(poly, center) < 0
+		self.poly[wrong] *= -1
+
+		self.cap_cm = np.ones(len(poly))
+
+	def rotate(self, lon, lat, pa):
+		""" """
+		angle = [(pa, lon, lat)]
+		self.center = sphere.rotate_xyz(*self.center, angles=angle)
+		self.poly = sphere.rotate_xyz(*self.poly, angles=angle)
+
+	def scale(self, a):
+		""" """
+		pass
 
 
 class Mask:
@@ -72,39 +125,39 @@ class Mask:
 				if not count % step:
 					self.logger.debug("count %i: %f %%", count, count * 100. / len(polygons))
 
-			lon, lat = np.transpose(vertices)
+			spoly = spherical_polygon(vertices)
 
-			xyz = np.transpose(sphere.lonlat2xyz(lon, lat))
-
-			center = np.sum(xyz, axis=0)
-			norm = np.sqrt(np.sum(center**2))
-			center /= norm
-
-			costheta = np.min(np.dot(xyz, center))
-
-			nvert = len(lon)
-			if nvert < 3:
-				raise Exception("Not enough vertices! (%i)" % nvert)
-
-			ind1 = np.arange(nvert)
-			ind2 = (ind1 + 1) % nvert
-			poly = np.cross(xyz[ind2], xyz[ind1])
-			norm = np.sum(poly * poly, axis=1)**.5
-			poly = np.transpose(poly.T / norm)
-			# Ensure that the orientations are correct
-			# The angle between center and caps should be less than 90 deg
-			wrong = np.dot(poly, center) < 0
-			poly[wrong] *= -1
-
-			cap_cm = np.ones(len(poly))
-
-			self.polygons.append(poly)
-			self.cap_cm.append(cap_cm)
-			self.centers.append(center)
-			self.costheta.append(costheta)
+			self.polygons.append(spoly.poly)
+			self.cap_cm.append(spoly.cap_cm)
+			self.centers.append(spoly.center)
+			self.costheta.append(spoly.costheta)
 			self.vertices.append(vertices)
 		self.fullsky = False
 		self.logger.info("Loaded %i polygons", len(self.polygons))
+
+	def import_mosaic(self, tile, centers):
+		""" Define a mask as a tile that is replicated on the sky
+		to form a mosaic.
+
+		Parameters
+		----------
+		tiles : list
+			list of tile patterns in vertex format
+		centers : list
+			list of centers
+		"""
+		for vertices in tile:
+			spoly = spherical_polygon(vertices)
+
+		for center, orientation, scale in centers:
+			new_poly = deepcopy(spoly)
+			new_poly.scale(scale)
+			new_poly.rotate(*center, orientation)
+
+			self.polygons.append(new_poly.poly)
+			self.cap_cm.append(new_poly.cap_cm)
+			self.centers.append(new_poly.center)
+			self.costheta.append(new_poly.costheta)
 
 	def _build_lookup_tree(self):
 		""" Private function to initialize lookup trees for fast spatial queries.
