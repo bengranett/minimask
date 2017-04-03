@@ -335,7 +335,7 @@ class Mask:
 		matches = self._cells[matches[ii]]
 		return matches
 
-	def draw_random_position(self, dens=None, n=None,
+	def sample(self, dens=None, n=None,
 							cell=None, nside=1, order=hp.RING):
 		""" Draw longitude and latitude pairs uniformly inside the mask.
 
@@ -399,4 +399,4 @@ class Mask:
 
 		return lon[sel], lat[sel]
 
-	sample = draw_random_position
+	draw_random_position = sample
