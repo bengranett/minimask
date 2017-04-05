@@ -4,6 +4,7 @@ import time
 import cPickle as pickle
 from sklearn.neighbors import KDTree
 from copy import deepcopy
+import gzip
 
 import sphere
 import healpix_projection as hp
@@ -314,7 +315,7 @@ class Mask(object):
 		self.logger.info("Loaded %i polygons", len(self.polygons))
 
 	def import_mosaic(self, tile, centers):
-		""" Define a mask as a tile that is replicated on the sky
+		""" Construct a mask from a tile that is replicated on the sky
 		to form a mosaic.
 
 		Parameters
@@ -324,6 +325,8 @@ class Mask(object):
 		centers : list
 			list of centers
 		"""
+		self.mosaic = (tile, centers)
+
 		poly_list = []
 		for vertices in tile:
 			poly_list.append(spherical_polygon(vertices))
@@ -393,6 +396,36 @@ class Mask(object):
 		if len(self.centers) > 0:
 			self.fullsky = False
 		self.logger.info("Loaded data from file %s.  num centers: %i, dt=%f", filename, len(self.centers), dt)
+
+	def dump_mosaic(self, filename):
+		""" """
+		tile, centers = self.mosaic
+		with gzip.open(filename, 'w') as out:
+			for poly in tile:
+				print >>out, "poly", " ".join(["%f"%v for v in poly.flatten()])
+			print >>out, "centers"
+			for c,angle,scale in centers:
+				print >>out, c[0], c[1], angle, scale
+		self.logger.info("Wrote {} polygons in tile and {} pointing centers from file {}".format(len(tile),len(centers),filename))
+
+	def load_mosaic(self, filename):
+		""" """
+		tile = []
+		centers = []
+		with gzip.open(filename) as input:
+			for line in input:
+				if line.startswith("poly"):
+					x = [float(v) for v in line[5:].split()]
+					n = len(x) // 2
+					tile.append(np.reshape(x, (n, 2)))
+				else:
+					try:
+						x = [float(v) for v in line.split()]
+					except:
+						continue
+					centers.append(((x[0],x[1]),x[2],x[3]))
+		self.logger.info("Loaded {} polygons in tile and {} pointing centers from file {}".format(len(tile),len(centers),filename))
+		self.import_mosaic(tile, centers)
 
 	def write_mangle_fits(self, filename):
 		""" Write out a mask file in FITS format compatable with mangle.
