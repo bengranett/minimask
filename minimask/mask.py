@@ -62,7 +62,7 @@ class spherical_polygon(object):
 
 	def compute_center(self, vertices=None):
 		""" Compute a pseudo-center of the spherical polygon and compute bounding cap.
-		
+
 		Parameters
 		----------
 		vertices : ndarray
@@ -256,6 +256,7 @@ class Mask:
 		self.centers = []
 		self.costheta = []
 		self.vertices = []
+		self.polys = []
 		self.lookup_tree = None
 		self.fullsky = True
 
@@ -289,6 +290,7 @@ class Mask:
 					self.logger.debug("count %i: %f %%", count, count * 100. / len(polygons))
 
 			spoly = spherical_polygon(vertices)
+			self.polys.append(spoly)
 
 			self.polygons.append(spoly.poly)
 			self.cap_cm.append(spoly.cap_cm)
@@ -489,22 +491,11 @@ class Mask:
 				continue
 			for poly_i in matches:
 				# loop through polygons near to the point
-				caps = self.polygons[poly_i]
-				cm = self.cap_cm[poly_i]
 
-				ncaps = len(caps)
+				r = self.polys[poly_i].contains(xyz[i])
 
-				# vectorizing this proves slower...
-				# inside[i] = np.all((1 - np.sum(xyz[i]*caps,axis=1)) < cm)
-
-				# loop through each cap and test if the point is inside.
-				# stop after the first fail
-				for j in range(ncaps):
-					r = (1 - np.dot(xyz[i], caps[j])) < cm[j]
-					if not r:
-						break
 				if r:
-					inside[i] = r  # set to True
+					inside[i] = r
 					break
 		return inside
 
@@ -616,3 +607,15 @@ class Mask:
 		return lon[sel], lat[sel]
 
 	draw_random_position = sample
+
+	def render(self, res=10):
+		""" Generate points along the polygon edges for plotting purposes.
+
+		Returns
+		-------
+		lists of vertices along edges
+		"""
+		points = []
+		for poly in self.polys:
+			points.append(poly.render(res))
+		return points
