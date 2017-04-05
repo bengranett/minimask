@@ -11,10 +11,12 @@ import misc
 
 SPHERE_AREA = 4 * np.pi * (180 / np.pi)**2
 DEG2RAD = np.pi / 180
-
+logging.basicConfig(level=logging.DEBUG)
 
 class spherical_polygon(object):
 	""" """
+	logger = logging.getLogger(__name__)
+
 	def __init__(self, vertices=None):
 		""" """
 		self.cap_cm = []
@@ -85,7 +87,6 @@ class spherical_polygon(object):
 		vertices : ndarray
 		"""
 		lon, lat = np.transpose(vertices)
-
 		xyz = np.transpose(sphere.lonlat2xyz(lon, lat))
 
 		self.compute_center(xyz)
@@ -128,7 +129,7 @@ class spherical_polygon(object):
 
 		return vertices
 
-	def rotate(self, lon, lat, pa):
+	def rotate(self, lon, lat, orientation=0):
 		""" Rotate the spherical polygon.
 
 		A point at (lon,lat) = (0,0) will end up at (lon,lat).
@@ -139,10 +140,10 @@ class spherical_polygon(object):
 			longitudinal angle
 		lat : float
 			latitudinal angle
-		pa :
+		orientation :
 			orientation angle from north
 		"""
-		angle = [(pa, lon, lat)]
+		angle = [(orientation, lon, lat)]
 
 		self.center = sphere.rotate_xyz(*self.center, angles=angle)
 		self.caps = sphere.rotate_xyz(*self.caps.T, angles=angle).T
@@ -166,7 +167,7 @@ class spherical_polygon(object):
 
 		self.compute_center()
 
-	def contains(self, lon, lat, tol=1e-10):
+	def contains(self, lon, lat, z=None, tol=1e-10):
 		""" Check if the given coordinates are inside the polygon.
 
 		Parameters
@@ -182,20 +183,27 @@ class spherical_polygon(object):
 		-------
 		bool array : True means inside.
 		"""
-		xyz = np.transpose(sphere.lonlat2xyz(lon, lat))
+		if z is None:
+			xyz = np.transpose(sphere.lonlat2xyz(lon, lat))
+		else:
+			xyz = np.transpose([lon, lat, z])
 
-		inside = np.ones(len(xyz))
+		if len(xyz.shape) == 1:
+			inside = True
+		else:
+			inside = np.ones(xyz.shape[1])
 		for j in range(self.ncaps):
 			inside = np.logical_and(inside, (1 - np.dot(xyz, self.caps[j])) < self.cap_cm[j] * (1 + tol))
 		return inside
 
-	def render(self, res=10.):
+	def render(self, res=10):
 		""" Generate lon,lat points along the polygon edges for plotting purposes.
 
 		Parameters
 		----------
 		res : float
-			step size in degrees to sample the edge
+			step size in degrees to sample the edge.
+			res=0 will return only the vertices without points along the edge.
 		"""
 		if self.ncaps == 0:
 			return None
@@ -205,6 +213,11 @@ class spherical_polygon(object):
 			return cap
 
 		vert = self.get_vertices()
+
+		if res == 0:
+			return np.transpose(vert)
+
+		assert(res > 0)
 
 		caps = []
 		for i in range(self.ncaps):
@@ -228,7 +241,7 @@ class spherical_polygon(object):
 		return caps
 
 
-class Mask:
+class Mask(object):
 	""" Routines to process polygon masks. """
 	logger = logging.getLogger(__name__)
 
@@ -311,18 +324,23 @@ class Mask:
 		centers : list
 			list of centers
 		"""
+		poly_list = []
 		for vertices in tile:
-			spoly = spherical_polygon(vertices)
+			poly_list.append(spherical_polygon(vertices))
 
 		for center, orientation, scale in centers:
-			new_poly = deepcopy(spoly)
-			new_poly.scale(scale)
-			new_poly.rotate(*center, orientation=orientation)
+			for spoly in poly_list:
+				new_poly = deepcopy(spoly)
+				if scale != 1:
+					new_poly.scale(scale)
+				new_poly.rotate(*center, orientation=orientation)
 
-			self.polygons.append(new_poly.poly)
-			self.cap_cm.append(new_poly.cap_cm)
-			self.centers.append(new_poly.center)
-			self.costheta.append(new_poly.costheta)
+				self.polys.append(new_poly)
+				self.polygons.append(new_poly.caps)
+				self.cap_cm.append(new_poly.cap_cm)
+				self.centers.append(new_poly.center)
+				self.costheta.append(new_poly.costheta)
+		self.fullsky = False
 
 	def _build_lookup_tree(self):
 		""" Private function to initialize lookup trees for fast spatial queries.
@@ -492,8 +510,7 @@ class Mask:
 			for poly_i in matches:
 				# loop through polygons near to the point
 
-				r = self.polys[poly_i].contains(xyz[i])
-
+				r = self.polys[poly_i].contains(*xyz[i])
 				if r:
 					inside[i] = r
 					break
@@ -608,8 +625,14 @@ class Mask:
 
 	draw_random_position = sample
 
-	def render(self, res=10):
+	def render(self, res=0):
 		""" Generate points along the polygon edges for plotting purposes.
+
+		Parameters
+		----------
+		res : float
+			resolution in degrees used to sample the polygon edges.
+			If res=0 only the vertices are returned.
 
 		Returns
 		-------
