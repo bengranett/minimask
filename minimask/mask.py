@@ -412,18 +412,27 @@ class Mask(object):
 	def dump_mosaic(self, filename):
 		""" Write the mask data in mosaic format. """
 		tile, centers = self.mosaic
-		with gzip.open(filename, 'w') as out:
-			for poly in tile:
-				print >>out, "poly", " ".join(["%f"%v for v in poly.flatten()])
-			print >>out, "centers"
-			for c,angle,scale in centers:
-				print >>out, c[0], c[1], angle, scale
+
+		if filename.endswith("gz"):
+			out = gzip.open(filename, 'w')
+		else:
+			out = file(filename, 'w')
+
+		for poly in tile:
+			print >>out, "poly", " ".join(["%f"%v for v in poly.flatten()])
+		print >>out, "centers"
+		for c,angle,scale in centers:
+			print >>out, c[0], c[1], angle, scale
+
+		out.close()
 		self.logger.info("Wrote {} polygons in tile and {} pointing centers from file {}".format(len(tile),len(centers),filename))
 
 	def load_mosaic(self, filename):
 		""" Load a mosaic format file. """
 		tile = []
 		centers = []
+
+		t0 = time.time()
 
 		try:
 			gzip.open(filename).readline()
@@ -448,7 +457,7 @@ class Mask(object):
 
 		input.close()
 
-		self.logger.info("Loaded {} polygons in tile and {} pointing centers from file {}".format(len(tile),len(centers),filename))
+		self.logger.info("Loaded {} polygons in tile and {} pointing centers from file {} (file read time: {:3.1f}sec)".format(len(tile),len(centers),filename, time.time()-t0))
 		self.import_mosaic(tile, centers)
 
 	def write_mangle_fits(self, filename):
