@@ -32,8 +32,11 @@ class spherical_polygon(object):
 	def add_cap(self, center, theta, lonlat=False):
 		""" Add a cap
 
-		If a polygon is constructed from more than one cap, care must
-		be taken that the edges are ordered counter-clockwise.
+		Notes
+		-----
+		If a polygon is constructed from more than one cap, care must be taken
+		that they are loaded in order such that the edges go around counter-
+		clockwise.
 
 		Parameters
 		----------
@@ -379,26 +382,35 @@ class Mask(object):
 		self.pixel_lookup = KDTree(xyz)
 
 	def dump(self, filename):
-		""" """
+		""" Write the mask data to disk. """
 		data = self.polygons, self.cap_cm, self.centers, self.costheta
 		t0 = time.time()
 		pickle.dump(data, file(filename, "w"))
 		dt = time.time()-t0
 		self.logger.info("Wrote data to file %s.  time=%f", filename, dt)
 
-	def load(self, filename):
-		""" """
+	def load_dump(self, filename):
+		""" Load a file written by dump. """
 		self.logger.debug("Loading mask file %s ...", filename)
 		t0 = time.time()
 		data = pickle.load(file(filename))
 		dt = time.time()-t0
 		self.polygons, self.cap_cm, self.centers, self.costheta = data
+
+		for i in range(len(self.polygons)):
+			S = spherical_polygon()
+			S.caps = self.polygons[i]
+			S.cap_cm = self.cap_cm[i]
+			S.center = self.centers[i]
+			S.costheta = self.costheta[i]
+			S.ncaps = len(S.caps)
+
 		if len(self.centers) > 0:
 			self.fullsky = False
 		self.logger.info("Loaded data from file %s.  num centers: %i, dt=%f", filename, len(self.centers), dt)
 
 	def dump_mosaic(self, filename):
-		""" """
+		""" Write the mask data in mosaic format. """
 		tile, centers = self.mosaic
 		with gzip.open(filename, 'w') as out:
 			for poly in tile:
@@ -409,21 +421,33 @@ class Mask(object):
 		self.logger.info("Wrote {} polygons in tile and {} pointing centers from file {}".format(len(tile),len(centers),filename))
 
 	def load_mosaic(self, filename):
-		""" """
+		""" Load a mosaic format file. """
 		tile = []
 		centers = []
-		with gzip.open(filename) as input:
-			for line in input:
-				if line.startswith("poly"):
-					x = [float(v) for v in line[5:].split()]
-					n = len(x) // 2
-					tile.append(np.reshape(x, (n, 2)))
-				else:
-					try:
-						x = [float(v) for v in line.split()]
-					except:
-						continue
-					centers.append(((x[0],x[1]),x[2],x[3]))
+
+		try:
+			gzip.open(filename).readline()
+			input = gzip.open(filename)
+		except IOError:
+			input = file(filename)
+
+		for line in input:
+			line = line.strip()
+			if line.startswith("#"):
+				continue
+			if line.startswith("poly"):
+				x = [float(v) for v in line[5:].split()]
+				n = len(x) // 2
+				tile.append(np.reshape(x, (n, 2)))
+			else:
+				try:
+					x = [float(v) for v in line.split()]
+				except:
+					continue
+				centers.append(((x[0],x[1]),x[2],x[3]))
+
+		input.close()
+
 		self.logger.info("Loaded {} polygons in tile and {} pointing centers from file {}".format(len(tile),len(centers),filename))
 		self.import_mosaic(tile, centers)
 
@@ -461,7 +485,7 @@ class Mask(object):
 					out.write("%3.15f %3.15f %3.15f %1.10f\n" % (x, y, z, cm[i]))
 		self.logger.info("Wrote %i polygons to %s", len(self.polygons), filename)
 
-	def read_mangle_poly(self, filename):
+	def load_mangle_poly(self, filename):
 		""" Read in a mask file in Mangle polygon format.
 
 		Reference: http://space.mit.edu/~molly/mangle/manual/polygon.html
@@ -503,6 +527,30 @@ class Mask(object):
 		polygons.append(poly)
 		cap_cm.append(cm)
 		self.logger.info("Loaded %s and got %i polygons", filename, len(poly))
+
+	def load(self, filename):
+		""" Load a mask file.
+
+		Parameters
+		----------
+		filename : str
+			path to file
+
+		Raises
+		------
+		IOError if file cannot be parsed.
+		"""
+		try:
+			return self.load_dump(filename)
+		except:
+			pass
+
+		try:
+			return self.load_mosaic(filename)
+		except:
+			pass
+
+		raise IOError("Cannot parse file: {}".format(filename))
 
 	def contains(self, lon, lat):
 		""" Check if points are inside mask.
