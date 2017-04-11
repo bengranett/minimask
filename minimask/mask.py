@@ -12,7 +12,6 @@ import misc
 
 SPHERE_AREA = 4 * np.pi * (180 / np.pi)**2
 DEG2RAD = np.pi / 180
-logging.basicConfig(level=logging.DEBUG)
 
 class spherical_polygon(object):
 	""" """
