@@ -84,3 +84,8 @@ def test_sample_cap(n=1000):
         lon,lat = sphere.sample_cap(n, lon=center[0], lat=center[1], theta=theta)
         r = sphere.distance(center[0], center[1], lon, lat)
         yield check_close, r.max(), np.abs(theta), 1e-2
+
+def test_cap_intersection():
+    a, b = sphere.cap_intersection(np.array([1., 0., 0.]), 0, np.array([0., 0., 1.]), 0)
+    check_close(a, (-90, 0))
+    check_close(b, (90, 0))
