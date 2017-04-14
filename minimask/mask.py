@@ -366,7 +366,7 @@ class Mask(object):
 			if self.lookup_tree is None:
 				self._build_lookup_tree()
 
-			self.logger.debug("pixel mask nside=%i order=%s", self.grid.nside, self.grid.order)
+			self.logger.debug("build pixel mask nside=%i order=%s", self.grid.nside, self.grid.order)
 
 			self.pixel_mask = np.zeros(self.grid.npix, dtype=bool)
 			pix = np.arange(self.grid.npix)
@@ -675,9 +675,6 @@ class Mask(object):
 		-------
 		lon, lat : random coordinates
 		"""
-		if cell is not None:
-			self.logger.debug("selected cell: %s (nside %s)", cell, nside)
-
 		if self.pixel_mask is None:
 			self._build_pixel_mask()
 
@@ -689,7 +686,6 @@ class Mask(object):
 
 		if len(cell) == 0:
 			# if there are no cells return empty arrays
-			# self.logger.warning("Effective area of the survey is 0.")
 			return np.array([]), np.array([])
 
 		if misc.is_number(cell):
@@ -701,14 +697,9 @@ class Mask(object):
 		if dens is not None:
 			n = int(SPHERE_AREA * 1. / self.grid.npix * n_cells * dens)
 
-		self.logger.debug("Random sampling: npoints=%i, ncells=%i", n, len(cell))
-		t0 = time.time()
-
 		lon, lat = self.grid.random_sample(cell, n)
 
 		sel = self.contains(lon, lat)
-		self.logger.debug("done! elapsed time = %f sec", time.time() - t0)
-		self.logger.debug("Random sampling success rate: %f", np.sum(sel) * 1. / len(sel))
 
 		return lon[sel], lat[sel]
 
@@ -731,3 +722,41 @@ class Mask(object):
 		for poly in self.polys:
 			points.append(poly.render(res))
 		return points
+
+	def pixelize(self, nside=512, order=hp.RING, n=100):
+		""" Pixelize the mask using healpix.
+
+		Each healpix cell is sampled randomly with n points.
+		The fraction of points inside the mask will be returned
+		as a healpix map.
+
+		Parameters
+		----------
+		nside : int
+			healpix nside parameter
+		order : str
+			healpix order parameter (ring or nest)
+		n : int
+			number of points to sample in each healpix cell
+
+		Returns
+		-------
+		numpy.ndarray : healpix map containing area fraction
+		"""
+		grid = hp.HealpixProjector(nside=nside, order=order)
+
+		out = np.zeros(grid.npix, dtype='d')
+
+		for pixel in np.arange(grid.npix):
+			ra, dec = self.sample(n=n, cell=[pixel], nside=nside, order=order)
+
+			try:
+				len(ra)
+			except:
+				print ra
+				print dec
+				raise
+
+			out[pixel] = len(ra) * 1. / n
+
+		return out
