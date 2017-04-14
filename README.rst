@@ -21,7 +21,13 @@ The main operations to be carried out are:
 Examples
 --------
 
-
+Dependencies
+------------
+* `python 2.7 <https://python.org>`_
+* `numpy <https://numpy.org>`_
+* `scipy <https://scipy.org>`_ 
+* `scikit-learn <https://scikit-learn.org>`_
+* `healpy <https://github.com/healpy/healpy>`_
 
 Contributors
 ------------
