@@ -4,7 +4,9 @@ import time
 import cPickle as pickle
 from sklearn.neighbors import KDTree
 from copy import deepcopy
+import cStringIO as StringIO
 import gzip
+import hashlib
 
 import sphere
 import healpix_projection as hp
@@ -412,10 +414,8 @@ class Mask(object):
 		""" Write the mask data in mosaic format. """
 		tile, centers = self.mosaic
 
-		if filename.endswith("gz"):
-			out = gzip.open(filename, 'w')
-		else:
-			out = file(filename, 'w')
+
+		out = StringIO.StringIO()
 
 		for poly in tile:
 			print >>out, "poly", " ".join(["%f"%v for v in poly.flatten()])
@@ -423,7 +423,18 @@ class Mask(object):
 		for c,angle,scale in centers:
 			print >>out, c[0], c[1], angle, scale
 
+		hash = hashlib.md5(out.getvalue()).hexdigest()
+
+		if filename.endswith("gz"):
+			outfile = gzip.open(filename, 'w')
+		else:
+			outfile = file(filename, 'w')
+
+		outfile.write("# md5sum: {}\n".format(hash))
+		outfile.write(out.getvalue())
+
 		out.close()
+
 		self.logger.info("Wrote {} polygons in tile and {} pointing centers from file {}".format(len(tile),len(centers),filename))
 
 	def load_mosaic(self, filename):
