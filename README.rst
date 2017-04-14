@@ -15,8 +15,8 @@ spatial indices.
 
 The main operations to be carried out are:
 
- * query polygons that contain a given point
- * draw random samples of points from the area covered
+* query polygons that contain a given point
+* draw random samples of points from the area covered
 
 Examples
 --------
