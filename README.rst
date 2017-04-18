@@ -27,7 +27,7 @@ Load a mask polygon file and generate uniform random samples:
 >>> ra, dec = M.sample(n=10000)         # generate 10,000 points
 >>> ra, dec = M.sample(density=10)      # ...or with number density 10 / square degree
 
-Check if points are inside the mask:
+Check if points are inside a polygon:
 
 >>> inside = M.contains(ra, dec)
 >>> print inside
