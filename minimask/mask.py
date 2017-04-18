@@ -20,7 +20,7 @@ class Mask(object):
 	""" Routines to process polygon masks. """
 	logger = logging.getLogger(__name__)
 
-	def __init__(self, pixel_mask_nside=256, pixel_mask_order='ring'):
+	def __init__(self, filename=None, pixel_mask_nside=256, pixel_mask_order='ring'):
 		""" Routines to process polygon masks.
 
 		A partitioning of the polygon mask will be created using a Healpix grid.
@@ -51,6 +51,9 @@ class Mask(object):
 		# initialize pixel mask
 		self.grid = hp.HealpixProjector(nside=self.config['pixel_mask_nside'], order=self.config['pixel_mask_order'])
 		self.pixel_mask = None
+
+		if filename is not None:
+			self.load(filename)
 
 	def import_vertices(self, polygons):
 		""" Import a mask as a list of longitude, latitude vertices representing
