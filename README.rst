@@ -21,6 +21,18 @@ The main operations to be carried out are:
 Examples
 --------
 
+Load a mask polygon file and generate uniform random samples:
+
+>>> M = minimask.Mask("survey.txt.gz")
+>>> ra, dec = M.sample(n=10000)         # generate 10,000 points
+>>> ra, dec = M.sample(density=10)      # ...or with number density 10 / square degree
+
+Check if points are inside the mask:
+
+>>> inside = M.contains(ra, dec)
+>>> print inside
+[ True  True  True ...,  True  True  True]
+
 Dependencies
 ------------
 * `python 2.7 <https://python.org>`_
