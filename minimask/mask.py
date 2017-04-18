@@ -432,7 +432,7 @@ class Mask(object):
 		matches = self._cells[matches[ii]]
 		return matches
 
-	def sample(self, dens=None, n=None,
+	def sample(self, density=None, n=None,
 							cell=None, nside=1, order=hp.RING):
 		""" Draw longitude and latitude pairs uniformly inside the mask.
 
