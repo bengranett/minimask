@@ -446,7 +446,7 @@ class Mask(object):
 
 		Parameters
 		----------
-		dens : float
+		density : float
 			number density of samples (number per square degree)
 		cell : int or list
 			optional healpix cell number or list of cell numbers
@@ -478,8 +478,8 @@ class Mask(object):
 		else:
 			n_cells = len(cell)
 
-		if dens is not None:
-			n = int(SPHERE_AREA * 1. / self.grid.npix * n_cells * dens)
+		if density is not None:
+			n = int(SPHERE_AREA * 1. / self.grid.npix * n_cells * density)
 
 		lon, lat = self.grid.random_sample(cell, n)
 
