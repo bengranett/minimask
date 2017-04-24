@@ -12,7 +12,7 @@ def test_mask_sample():
     vertices = [[0,0],[10,0],[10,10],[0,10]]
     S = spherical_polygon(vertices)
 
-    M = Mask(polys=[S], fullsky=False)
+    M = Mask(polys=[S])
 
     x,y = M.sample(100)
 

@@ -27,7 +27,6 @@ def vertices_to_mask(polygons, **metadata):
 
     params = {
         'polys': [],
-        'fullsky': True
     }
 
     params.update(kwargs)
@@ -43,8 +42,6 @@ def vertices_to_mask(polygons, **metadata):
         spoly = spherical_polygon(vertices)
         params['polys'].append(spoly)
 
-    if count > 0:
-        params['fullsky'] = False
     self.logger.info("Loaded %i polygons", len(self.polygons))
 
     return Mask(**params)
