@@ -105,12 +105,12 @@ class Mask(object):
 		for S in self.params['polys']:
 			centers.append(S.center)
 			costheta.append(S.costheta)
-		centers = np.transpose(centers)
+		centers = np.array(centers)
 
 		self.logger.debug("Building mask lookup tree")
-		self.lookup_tree = KDTree(centers)
-		self.search_radius = np.arccos(np.min(costheta))
-		self.logger.debug("Mask search radius: %f", self.search_radius)
+		self.params['lookup_tree'] = KDTree(centers)
+		self.params['search_radius'] = np.arccos(np.min(costheta))
+		self.logger.debug("Mask search radius: %f", self.params['search_radius'])
 
 	def _build_pixel_mask(self, expand_fact=1):
 		""" Private function to initialize partitioning grid using Healpix."""
@@ -126,7 +126,7 @@ class Mask(object):
 			self.params['pixel_mask'] = np.zeros(self.grid.npix, dtype=bool)
 			pix = np.arange(self.grid.npix)
 			xyz = np.transpose(self.grid.pix2vec(pix))
-			radius = max(expand_fact * self.grid.pixel_size, self.search_radius)
+			radius = max(expand_fact * self.grid.pixel_size, self.params['search_radius'])
 			matches = self.params['lookup_tree'].query_radius(xyz, radius)
 			for i, m in enumerate(matches):
 				if len(m) > 0:
@@ -213,7 +213,7 @@ class Mask(object):
 		xyz = np.transpose(sphere.lonlat2xyz(lon, lat))
 
 		# find polygons near to the points
-		match_list = self.params['lookup_tree'].query_radius(xyz, self.search_radius)
+		match_list = self.params['lookup_tree'].query_radius(xyz, self.params['search_radius'])
 
 		# array to store results, whether points are inside or outside
 		inside = np.zeros(lon.shape, dtype='bool')  # initially set to False
