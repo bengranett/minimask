@@ -3,6 +3,10 @@ from minimask.mask import Mask
 from minimask.spherical_poly import spherical_polygon
 
 
+def check(a):
+    assert a
+
+
 def test_mask_sample():
     """ """
     vertices = [[0,0],[10,0],[10,10],[0,10]]
@@ -12,13 +16,16 @@ def test_mask_sample():
 
     x,y = M.sample(100)
 
-    assert len(x) == 1000
-    assert len(y) == 1000
-    
-    assert np.abs(x.min()) < 1
-    assert np.abs(y.min()) < 1
-    assert np.abs(x.max() - 10) < 1
-    assert np.abs(y.max() - 10) < 1
+    yield check, len(x) == 1000
+    yield check, len(y) == 1000
+
+    yield check, np.abs(x.min()) < 1
+    yield check, np.abs(y.min()) < 1
+    yield check, np.abs(x.max() - 10) < 1
+    yield check, np.abs(y.max() - 10) < 1
 
     r = M.contains(x, y)
-    assert np.sum(r) == 0
+    yield check, np.sum(r) == len(x)
+
+    w = M.get_weight(x, y)
+    yield check, np.allclose(w, np.ones(len(w)))
