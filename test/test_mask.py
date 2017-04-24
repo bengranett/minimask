@@ -14,7 +14,7 @@ def test_mask_sample():
 
     M = Mask(polys=[S])
 
-    x,y = M.sample(100)
+    x,y = M.sample(n=1000)
 
     yield check, len(x) == 1000
     yield check, len(y) == 1000
@@ -29,3 +29,17 @@ def test_mask_sample():
 
     w = M.get_weight(x, y)
     yield check, np.allclose(w, np.ones(len(w)))
+
+
+def test_mask():
+    """ check empty mask """
+    M = Mask()
+    x, y = M.sample(n=1000)
+
+    yield check, len(x) == 1000
+    yield check, len(y) == 1000
+
+    yield check, np.abs(x.min()) < 10
+    yield check, np.abs(y.min() + 90) < 10
+    yield check, np.abs(x.max() - 360) < 10
+    yield check, np.abs(y.max() - 90) < 10
