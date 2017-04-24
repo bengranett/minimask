@@ -55,7 +55,7 @@ class Mask(object):
 		if filename is not None:
 			self.load(filename)
 
-	def import_vertices(self, polygons):
+	def import_vertices(self, polygons, weights=None):
 		""" Import a mask as a list of longitude, latitude vertices representing
 		convex polygons.
 
@@ -72,8 +72,12 @@ class Mask(object):
 		Not enough vertices! if N<3.
 		"""
 		self.logger.debug("import %i polygons", len(polygons))
+
+		if weights is None:
+			weights = self.ones(len(polygons))
+
 		count = 0
-		for vertices in polygons:
+		for i, vertices in enumerate(polygons):
 			count += 1
 			if self.logger.isEnabledFor(logging.DEBUG):
 				step = max(1, len(polygons) // 10)
@@ -88,10 +92,11 @@ class Mask(object):
 			self.centers.append(spoly.center)
 			self.costheta.append(spoly.costheta)
 			self.vertices.append(vertices)
+			self.weights.append(weights[i])
 		self.fullsky = False
 		self.logger.info("Loaded %i polygons", len(self.polygons))
 
-	def import_mosaic(self, tile, centers):
+	def import_mosaic(self, tile, centers, weights=None):
 		""" Construct a mask from a tile that is replicated on the sky
 		to form a mosaic.
 
@@ -102,13 +107,18 @@ class Mask(object):
 		centers : list
 			list of centers
 		"""
+		if weights is None:
+			weights = np.ones(len(centers))
+
 		self.mosaic = (tile, centers)
 
 		poly_list = []
 		for vertices in tile:
 			poly_list.append(spherical_polygon(vertices))
 
+		i = 0
 		for center, orientation, scale in centers:
+			tile_weight = weights[i]
 			for spoly in poly_list:
 				new_poly = deepcopy(spoly)
 				if scale != 1:
@@ -120,6 +130,8 @@ class Mask(object):
 				self.cap_cm.append(new_poly.cap_cm)
 				self.centers.append(new_poly.center)
 				self.costheta.append(new_poly.costheta)
+				self.weights.append(tile_weight)
+			i += 1
 		self.fullsky = False
 
 	def _build_lookup_tree(self):
@@ -344,7 +356,7 @@ class Mask(object):
 
 		raise IOError("Cannot parse file: {}".format(filename))
 
-	def contains(self, lon, lat):
+	def contains(self, lon, lat, get_id=False):
 		""" Check if points are inside mask.
 
 		Parameters
@@ -359,7 +371,10 @@ class Mask(object):
 		bool array
 		"""
 		if self.fullsky:
-			return np.ones(len(lon), dtype=bool)
+			if get_id:
+				return np.ones(len(lon), dtype=bool), [[0] for i in xrange(len(lon))]
+			else:
+				return np.ones(len(lon), dtype=bool)
 
 		if self.lookup_tree is None:
 			self._build_lookup_tree()
@@ -376,6 +391,8 @@ class Mask(object):
 		# array to store results, whether points are inside or outside
 		inside = np.zeros(lon.shape, dtype='bool')  # initially set to False
 
+		poly_ids = [[0] for i in xrange(len(lon))]
+
 		for i, matches in enumerate(match_list):
 			# loop through points
 			if len(matches) == 0:
@@ -386,8 +403,54 @@ class Mask(object):
 				r = self.polys[poly_i].contains(*xyz[i])
 				if r:
 					inside[i] = r
-					break
-		return inside
+					poly_ids[i].append(poly_i)
+					if not get_id:
+						break
+
+		if get_id:
+			return inside, poly_ids
+		else:
+			return inside
+
+	def get_weight(self, lon, lat):
+		""" Return weights of every polygon that contains the points
+
+		Parameters
+		----------
+		lon : float ndarray
+			longitude coordinate (degr)
+		lat : float ndarray
+			latitude coordinate (degr)
+
+		Returns
+		-------
+		array
+		"""
+		inside, poly_ids = self.contains(lon, lat, get_id=True)
+
+		out = [np.take(self.weights, ids) for ids in poly_ids]
+
+		return out
+
+	def get_combined_weight(self, lon, lat, operation='sum'):
+		""" Return the combined weight of all polygons containing a point.
+
+		Parameters
+		----------
+		lon : float ndarray
+			longitude coordinate (degr)
+		lat : float ndarray
+			latitude coordinate (degr)
+		operation : str or callable
+			reduction operation to apply
+
+		Returns
+		-------
+		array
+		"""
+
+		weights = self.get_weight(lon, lat)
+		return weight_watcher.combine(weights, operation)
 
 	def _select_cells(self, coarse_cell, coarse_nside, coarse_order):
 		""" Private function returns list of cells in the internal healpix map
