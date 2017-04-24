@@ -12,6 +12,7 @@ import sphere
 from spherical_poly import spherical_polygon
 import healpix_projection as hp
 import misc
+import weight_watcher
 
 SPHERE_AREA = 4 * np.pi * (180 / np.pi)**2
 
