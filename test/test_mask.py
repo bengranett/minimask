@@ -12,7 +12,7 @@ def test_mask_sample():
     vertices = [[0,0],[10,0],[10,10],[0,10]]
     S = spherical_polygon(vertices)
 
-    M = Mask(polys=[S])
+    M = Mask(polys=[S, S])
 
     x,y = M.sample(n=1000)
 
@@ -28,7 +28,10 @@ def test_mask_sample():
     yield check, np.sum(r) == len(x)
 
     w = M.get_weight(x, y)
-    yield check, np.allclose(w, np.ones(len(w)))
+    yield check, np.allclose(w, np.ones((len(w), 2)))
+
+    w = M.get_combined_weight(x, y, operation='sum')
+    yield check, np.allclose(w, 2 * np.ones(len(w)))
 
 
 def test_mask():
