@@ -59,7 +59,6 @@ class Mosaic(object):
         mask_params = {
             'polys': [],
             'weights': None,
-            'fullsky': True,
         }
 
         poly_list = []
@@ -79,8 +78,6 @@ class Mosaic(object):
                 params['polys'].append(new_poly)
                 if params['weights'] is not None:
                     mask_params['weights'].append(params['weights'][tile_id])
-
-        mask_params['fullsky'] = False
 
         return Mask(**mask_params)
 

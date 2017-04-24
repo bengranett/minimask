@@ -24,7 +24,6 @@ class Mask(object):
 					polys=[],
 					weights=None,
 					metadata=None,
-					fullsky=True,
 					lookup_tree=None,
 					survey_cells=[],
 					pixel_lookup=None,
@@ -55,7 +54,6 @@ class Mask(object):
 			'polys': polys,
 			'weights': weights,
 			'metadata': metadata,
-			'fullsky': fullsky,
 			'pixel_mask': pixel_mask,
 			'pixel_lookup': pixel_lookup,
 			'lookup_tree': lookup_tree,
@@ -82,7 +80,6 @@ class Mask(object):
 		if mask.params['weights'] is not None:
 			self.params['weights'] = np.concatenate([self.params['weights'],
 													mask.params['weights']])
-			self.params['fullsky'] = np.logical_and(self.params['fullsky'], mask.params['fullsky'])
 		self.uninit()
 
 	def init(self):
@@ -97,7 +94,7 @@ class Mask(object):
 	def _build_lookup_tree(self):
 		""" Private function to initialize lookup trees for fast spatial queries.
 		"""
-		if self.params['fullsky']:
+		if len(self.params['polys']) == 0:
 			return
 
 		centers = []
@@ -114,7 +111,7 @@ class Mask(object):
 
 	def _build_pixel_mask(self, expand_fact=1):
 		""" Private function to initialize partitioning grid using Healpix."""
-		if self.params['fullsky']:
+		if len(self.params['polys']) == 0:
 			# full sky
 			self.params['pixel_mask'] = np.ones(self.grid.npix, dtype=bool)
 		else:
@@ -197,7 +194,7 @@ class Mask(object):
 		-------
 		bool array
 		"""
-		if self.params['fullsky']:
+		if len(self.params['polys']) == 0:
 			if get_id:
 				return np.ones(len(lon), dtype=bool), [[0] for i in xrange(len(lon))]
 			else:
