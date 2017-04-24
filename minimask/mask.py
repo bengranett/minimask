@@ -218,7 +218,7 @@ class Mask(object):
 		# array to store results, whether points are inside or outside
 		inside = np.zeros(lon.shape, dtype='bool')  # initially set to False
 
-		poly_ids = [[0] for i in xrange(len(lon))]
+		poly_ids = [[] for i in xrange(len(lon))]
 
 		for i, matches in enumerate(match_list):
 			# loop through points
@@ -254,7 +254,6 @@ class Mask(object):
 		array
 		"""
 		inside, poly_ids = self.contains(lon, lat, get_id=True)
-
 		if self.params['weights'] is None:
 			out = [np.ones(len(ids)) for ids in poly_ids]
 		else:
