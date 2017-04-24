@@ -20,7 +20,17 @@ class Mask(object):
 	""" Routines to process polygon masks. """
 	logger = logging.getLogger(__name__)
 
-	def __init__(self, filename=None, pixel_mask_nside=256, pixel_mask_order='ring'):
+	def __init__(self,
+					polys=[],
+					weights=None,
+					metadata=None,
+					fullsky=True,
+					lookup_tree=None,
+					survey_cells=[],
+					pixel_lookup=None,
+					pixel_mask=None,
+					pixel_mask_nside=256,
+					pixel_mask_order='ring'):
 		""" Routines to process polygon masks.
 
 		A partitioning of the polygon mask will be created using a Healpix grid.
@@ -28,6 +38,8 @@ class Mask(object):
 
 		Parameters
 		----------
+		polys : SphericalPolygon
+			list
 		pixel_mask_nside : int
 			Healpix resolution n_side for partitioning the polygon mask.
 		pixel_mask_order : str
@@ -39,139 +51,94 @@ class Mask(object):
 			'pixel_mask_order': pixel_mask_order
 		}
 
-		self.polygons = []
-		self.cap_cm = []
-		self.centers = []
-		self.costheta = []
-		self.vertices = []
-		self.polys = []
-		self.lookup_tree = None
-		self.fullsky = True
+		self.params = {
+			'polys': polys,
+			'weights': weights,
+			'metadata': metadata,
+			'fullsky': fullsky,
+			'pixel_mask': pixel_mask,
+			'pixel_lookup': pixel_lookup,
+			'lookup_tree': lookup_tree,
+			'survey_cells': survey_cells,
+		}
 
 		# initialize pixel mask
 		self.grid = hp.HealpixProjector(nside=self.config['pixel_mask_nside'], order=self.config['pixel_mask_order'])
-		self.pixel_mask = None
 
-		if filename is not None:
-			self.load(filename)
+	def __len__(self):
+		""" Return number of polygons in mask. """
+		try:
+			return len(self.params['polys'])
+		except TypeError:
+			return 0
 
-	def import_vertices(self, polygons, weights=None):
-		""" Import a mask as a list of longitude, latitude vertices representing
-		convex polygons.
+	def __getitem__(self, ind):
+		""" """
+		return self.params['polys'][ind]
 
-		A polygon with N (lon, lat) vertices is specified as a two-dim array
-		with shape (N,2).  It is necessary that the number of vertices is N>2.
+	def append(self, mask):
+		""" Append another mask object to this one. """
+		self.params['polys'].append(mask.params['polys'])
+		if mask.params['weights'] is not None:
+			self.params['weights'] = np.concatenate([self.params['weights'],
+													mask.params['weights']])
+			self.params['fullsky'] = np.logical_and(self.params['fullsky'], mask.params['fullsky'])
+		self.uninit()
 
-		Parameters
-		----------
-		polygons : list
-			A list of arrays representing polygons.
+	def init(self):
+		""" """
+		self._build_pixel_mask()
 
-		Raises
-		-------
-		Not enough vertices! if N<3.
-		"""
-		self.logger.debug("import %i polygons", len(polygons))
-
-		if weights is None:
-			weights = self.ones(len(polygons))
-
-		count = 0
-		for i, vertices in enumerate(polygons):
-			count += 1
-			if self.logger.isEnabledFor(logging.DEBUG):
-				step = max(1, len(polygons) // 10)
-				if not count % step:
-					self.logger.debug("count %i: %f %%", count, count * 100. / len(polygons))
-
-			spoly = spherical_polygon(vertices)
-			self.polys.append(spoly)
-
-			self.polygons.append(spoly.poly)
-			self.cap_cm.append(spoly.cap_cm)
-			self.centers.append(spoly.center)
-			self.costheta.append(spoly.costheta)
-			self.vertices.append(vertices)
-			self.weights.append(weights[i])
-		self.fullsky = False
-		self.logger.info("Loaded %i polygons", len(self.polygons))
-
-	def import_mosaic(self, tile, centers, weights=None):
-		""" Construct a mask from a tile that is replicated on the sky
-		to form a mosaic.
-
-		Parameters
-		----------
-		tiles : list
-			list of tile patterns in vertex format
-		centers : list
-			list of centers
-		"""
-		if weights is None:
-			weights = np.ones(len(centers))
-
-		self.mosaic = (tile, centers)
-
-		poly_list = []
-		for vertices in tile:
-			poly_list.append(spherical_polygon(vertices))
-
-		i = 0
-		for center, orientation, scale in centers:
-			tile_weight = weights[i]
-			for spoly in poly_list:
-				new_poly = deepcopy(spoly)
-				if scale != 1:
-					new_poly.scale(scale)
-				new_poly.rotate(*center, orientation=orientation)
-
-				self.polys.append(new_poly)
-				self.polygons.append(new_poly.caps)
-				self.cap_cm.append(new_poly.cap_cm)
-				self.centers.append(new_poly.center)
-				self.costheta.append(new_poly.costheta)
-				self.weights.append(tile_weight)
-			i += 1
-		self.fullsky = False
+	def uninit(self):
+		""" """
+		self.params['pixel_mask'] = None
+		self.params['lookup_tree'] = None
 
 	def _build_lookup_tree(self):
 		""" Private function to initialize lookup trees for fast spatial queries.
 		"""
-		if self.fullsky:
+		if self.params['fullsky']:
 			return
+
+		centers = []
+		costheta = []
+		for S in self.params['polys']:
+			centers.append(S.center)
+			costheta.append(S.costheta)
+		centers = np.transpose(centers)
+
 		self.logger.debug("Building mask lookup tree")
-		self.lookup_tree = KDTree(self.centers)
-		self.search_radius = np.arccos(np.min(self.costheta))
+		self.lookup_tree = KDTree(centers)
+		self.search_radius = np.arccos(np.min(costheta))
 		self.logger.debug("Mask search radius: %f", self.search_radius)
 
 	def _build_pixel_mask(self, expand_fact=1):
 		""" Private function to initialize partitioning grid using Healpix."""
-		if self.fullsky:
+		if self.params['fullsky']:
 			# full sky
-			self.pixel_mask = np.ones(self.grid.npix, dtype=bool)
+			self.params['pixel_mask'] = np.ones(self.grid.npix, dtype=bool)
 		else:
-			if self.lookup_tree is None:
+			if self.params['lookup_tree'] is None:
 				self._build_lookup_tree()
 
 			self.logger.debug("build pixel mask nside=%i order=%s", self.grid.nside, self.grid.order)
 
-			self.pixel_mask = np.zeros(self.grid.npix, dtype=bool)
+			self.params['pixel_mask'] = np.zeros(self.grid.npix, dtype=bool)
 			pix = np.arange(self.grid.npix)
 			xyz = np.transpose(self.grid.pix2vec(pix))
 			radius = max(expand_fact * self.grid.pixel_size, self.search_radius)
-			matches = self.lookup_tree.query_radius(xyz, radius)
+			matches = self.params['lookup_tree'].query_radius(xyz, radius)
 			for i, m in enumerate(matches):
 				if len(m) > 0:
-					self.pixel_mask[i] = True
-		self._cells = np.where(self.pixel_mask > 0)[0]
-		xyz = np.transpose(self.grid.pix2vec(self._cells))
-		self.pixel_lookup = KDTree(xyz)
+					self.params['pixel_mask'][i] = True
+		self.params['survey_cells'] = np.where(self.params['pixel_mask'] > 0)[0]
+		xyz = np.transpose(self.grid.pix2vec(self.params['survey_cells']))
+		self.params['pixel_lookup'] = KDTree(xyz)
 
 	def dump(self, filename):
 		""" Write the mask data to disk. """
-		data = self.polygons, self.cap_cm, self.centers, self.costheta
 		t0 = time.time()
-		pickle.dump(data, file(filename, "w"))
+		pickle.dump((self.config, self.params), file(filename, "w"))
 		dt = time.time()-t0
 		self.logger.info("Wrote data to file %s.  time=%f", filename, dt)
 
@@ -181,158 +148,14 @@ class Mask(object):
 		t0 = time.time()
 		data = pickle.load(file(filename))
 		dt = time.time()-t0
-		self.polygons, self.cap_cm, self.centers, self.costheta = data
 
-		for i in range(len(self.polygons)):
-			S = spherical_polygon()
-			S.caps = self.polygons[i]
-			S.cap_cm = self.cap_cm[i]
-			S.center = self.centers[i]
-			S.costheta = self.costheta[i]
-			S.ncaps = len(S.caps)
+		self.config, self.params = data
 
-		if len(self.centers) > 0:
-			self.fullsky = False
-		self.logger.info("Loaded data from file %s.  num centers: %i, dt=%f", filename, len(self.centers), dt)
+		self.grid = hp.HealpixProjector(nside=self.config['pixel_mask_nside'], order=self.config['pixel_mask_order'])
 
-	def dump_mosaic(self, filename):
-		""" Write the mask data in mosaic format. """
-		tile, centers = self.mosaic
+		self.logger.info("Loaded data from file %s.  num centers: %i, dt=%f", filename, len(self.params['polys']), dt)
 
-
-		out = StringIO.StringIO()
-
-		for poly in tile:
-			print >>out, "poly", " ".join(["%f"%v for v in poly.flatten()])
-		print >>out, "centers"
-		for c,angle,scale in centers:
-			print >>out, c[0], c[1], angle, scale
-
-		hash = hashlib.md5(out.getvalue()).hexdigest()
-
-		if filename.endswith("gz"):
-			outfile = gzip.open(filename, 'w')
-		else:
-			outfile = file(filename, 'w')
-
-		outfile.write("# md5sum: {}\n".format(hash))
-		outfile.write(out.getvalue())
-
-		out.close()
-
-		self.logger.info("Wrote {} polygons in tile and {} pointing centers from file {}".format(len(tile),len(centers),filename))
-
-	def load_mosaic(self, filename):
-		""" Load a mosaic format file. """
-		tile = []
-		centers = []
-
-		t0 = time.time()
-
-		try:
-			gzip.open(filename).readline()
-			input = gzip.open(filename)
-		except IOError:
-			input = file(filename)
-
-		for line in input:
-			line = line.strip()
-			if line.startswith("#"):
-				continue
-			if line.startswith("poly"):
-				x = [float(v) for v in line[5:].split()]
-				n = len(x) // 2
-				tile.append(np.reshape(x, (n, 2)))
-			else:
-				try:
-					x = [float(v) for v in line.split()]
-				except:
-					continue
-				centers.append(((x[0],x[1]),x[2],x[3]))
-
-		input.close()
-
-		self.logger.info("Loaded {} polygons in tile and {} pointing centers from file {} (file read time: {:3.1f}sec)".format(len(tile),len(centers),filename, time.time()-t0))
-		self.import_mosaic(tile, centers)
-
-	def write_mangle_fits(self, filename):
-		""" Write out a mask file in FITS format compatable with mangle.
-		Not implemented.
-
-		Parameters
-		----------
-		filename : str
-			Path to output file.
-		"""
-		raise Exception("Not implemented")
-
-	def write_mangle_poly(self, filename):
-		""" Write out a mask file in text format compatable with the Mangle
-		polygon format.
-
-		Reference: http://space.mit.edu/~molly/mangle/manual/polygon.html
-
-		Parameters
-		----------
-		filename : str
-			Path to output file.
-		"""
-		with open(filename, 'w') as out:
-			out.write("%i polygons\n" % len(self.polygons))
-			for num in xrange(len(self.polygons)):
-				poly = self.polygons[num]
-				cm = self.cap_cm[num]
-				ncaps = len(poly)
-				out.write("polygon %i ( %i caps, 1 weight, 0 pixel, 0 str):\n" % (num, ncaps))
-				for i in range(ncaps):
-					x, y, z = np.transpose(poly[i])
-					out.write("%3.15f %3.15f %3.15f %1.10f\n" % (x, y, z, cm[i]))
-		self.logger.info("Wrote %i polygons to %s", len(self.polygons), filename)
-
-	def load_mangle_poly(self, filename):
-		""" Read in a mask file in Mangle polygon format.
-
-		Reference: http://space.mit.edu/~molly/mangle/manual/polygon.html
-
-		Parameters
-		----------
-		filename : str
-			Path to output file.
-		"""
-		polygons = []
-		cap_cm = []
-		poly = None
-		cm = None
-		num = 0
-		line_num = 0
-		for line in file(filename):
-			line_num += 1
-			line = line.strip()
-			if line.startswith("#"):
-				continue
-			words = line.split()
-			if words[0] == "polygon":
-				num += 1
-				if poly is not None:
-					if len(poly) == 0:
-						self.logger.warning("Loading %s (line %i): polygon %i has no caps.",
-							filename, line_num, num)
-						continue
-					polygons.append(poly)
-					cap_cm.append(cm)
-				poly = []
-				cm = []
-				continue
-			x, y, z, c = [float(v) for v in w]
-			poly.append((x, y, z))
-			cm.append(c)
-		if poly is None:
-			self.logger.warning("Failed loading %s: no polygons found!" % filename)
-		polygons.append(poly)
-		cap_cm.append(cm)
-		self.logger.info("Loaded %s and got %i polygons", filename, len(poly))
-
-	def load(self, filename):
+	def load(self, filename, format=None):
 		""" Load a mask file.
 
 		Parameters
@@ -356,6 +179,10 @@ class Mask(object):
 
 		raise IOError("Cannot parse file: {}".format(filename))
 
+	def write(self, filename, format=None):
+		""" """
+		pass
+
 	def contains(self, lon, lat, get_id=False):
 		""" Check if points are inside mask.
 
@@ -370,13 +197,13 @@ class Mask(object):
 		-------
 		bool array
 		"""
-		if self.fullsky:
+		if self.params['fullsky']:
 			if get_id:
 				return np.ones(len(lon), dtype=bool), [[0] for i in xrange(len(lon))]
 			else:
 				return np.ones(len(lon), dtype=bool)
 
-		if self.lookup_tree is None:
+		if self.params['lookup_tree'] is None:
 			self._build_lookup_tree()
 
 		lon = np.array(lon)
@@ -386,7 +213,7 @@ class Mask(object):
 		xyz = np.transpose(sphere.lonlat2xyz(lon, lat))
 
 		# find polygons near to the points
-		match_list = self.lookup_tree.query_radius(xyz, self.search_radius)
+		match_list = self.params['lookup_tree'].query_radius(xyz, self.search_radius)
 
 		# array to store results, whether points are inside or outside
 		inside = np.zeros(lon.shape, dtype='bool')  # initially set to False
@@ -400,7 +227,7 @@ class Mask(object):
 			for poly_i in matches:
 				# loop through polygons near to the point
 
-				r = self.polys[poly_i].contains(*xyz[i])
+				r = self.params['polys'][poly_i].contains(*xyz[i])
 				if r:
 					inside[i] = r
 					poly_ids[i].append(poly_i)
@@ -428,7 +255,10 @@ class Mask(object):
 		"""
 		inside, poly_ids = self.contains(lon, lat, get_id=True)
 
-		out = [np.take(self.weights, ids) for ids in poly_ids]
+		if self.params['weights'] is None:
+			out = [np.ones(len(ids)) for ids in poly_ids]
+		else:
+			out = [np.take(self.params['weights'], ids) for ids in poly_ids]
 
 		return out
 
@@ -486,13 +316,13 @@ class Mask(object):
 		radius = coarse_grid.pixel_size
 
 		xyz = np.transpose(coarse_grid.pix2vec(coarse_cell))
-		matches = self.pixel_lookup.query_radius(xyz, radius)
+		matches = self.params['pixel_lookup'].query_radius(xyz, radius)
 		matches = np.concatenate(matches)
 
-		xyz = np.take(self.pixel_lookup.data, matches, axis=0)
+		xyz = np.take(self.params['pixel_lookup'].data, matches, axis=0)
 		pix = coarse_grid.vec2pix(*xyz.transpose())
 		ii = pix == coarse_cell
-		matches = self._cells[matches[ii]]
+		matches = self.params['survey_cells'][matches[ii]]
 		return matches
 
 	def sample(self, density=None, n=None,
@@ -522,11 +352,11 @@ class Mask(object):
 		-------
 		lon, lat : random coordinates
 		"""
-		if self.pixel_mask is None:
+		if self.params['pixel_mask'] is None:
 			self._build_pixel_mask()
 
 		if cell is None:
-			cell = self._cells   # full sky
+			cell = self.params['survey_cells']   # full sky
 		else:
 			# sample only selected patches defined by a healpix cell
 			cell = self._select_cells(cell, nside, order)
@@ -566,7 +396,7 @@ class Mask(object):
 		lists of vertices along edges
 		"""
 		points = []
-		for poly in self.polys:
+		for poly in self.params['polys']:
 			points.append(poly.render(res))
 		return points
 
