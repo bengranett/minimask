@@ -1,6 +1,6 @@
 import numpy as np
 
-from spherical_poly import spherical_polygon
+from ..spherical_poly import spherical_polygon
 
 
 def ManglePolyIO(MaskIO):

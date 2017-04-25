@@ -1,24 +1,24 @@
+import mosaic
+import mangle
 
 
+registry = {
+    'mosaic': mosaic.Mosaic,
+    'manglepoly': mangle.ManglePolyIO,
+}
 
 
-class MaskIO(object):
+def read(filename, format):
     """ """
-    registry = {
-        'mosaic': mosaic.Mosaic,
-        'manglepoly': mangle.ManglePolyIO,
-    }
+    if format in registry:
+        loader = registry[format]()
+        if loader.canread:
+            return loader.read(filename)
 
-    def read(self, filename, format):
-        """ """
-        if format in self.registry:
-            loader = self.registry[format]()
-            if loader.canread:
-                return loader.read(filename).getmask()
 
-    def write(self, mask, filename, format):
-        """ """
-        if format in self.registry:
-            loader = self.registry[format]()
-            if loader.canwrite:
-                return loader.write(mask, filename)
+def write(mask, filename, format):
+    """ """
+    if format in registry:
+        loader = registry[format]()
+        if loader.canwrite:
+            return loader.write(mask, filename)

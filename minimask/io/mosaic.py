@@ -1,5 +1,12 @@
 import numpy as np
+import logging
+import cStringIO as StringIO
+import hashlib
+import gzip
+import time
+from copy import deepcopy
 
+from ..spherical_poly import spherical_polygon
 
 def mosaic_to_mask(*args, **kwargs):
     """ """
@@ -8,6 +15,8 @@ def mosaic_to_mask(*args, **kwargs):
 
 class Mosaic(object):
     """ """
+    logger = logging.getLogger(__name__)
+
     name = 'mosaic'
     canread = True
     canwrite = False
@@ -62,8 +71,8 @@ class Mosaic(object):
         }
 
         poly_list = []
-        for vertices in tile:
-            poly_list.append(spherical_polygon(self.params['vertices']))
+        for vertices in self.params['tile']:
+            poly_list.append(spherical_polygon(vertices))
 
         for tile_id, center in enumerate(self.params['centers']):
 
@@ -74,12 +83,17 @@ class Mosaic(object):
 
                 if self.params['orientations'] is not None and self.params['orientations'][tile_id] != 0:
                     new_poly.rotate(*center, orientation=self.params['orientations'][tile_id])
+                else:
+                    new_poly.rotate(*center)
 
-                params['polys'].append(new_poly)
-                if params['weights'] is not None:
-                    mask_params['weights'].append(params['weights'][tile_id])
+                mask_params['polys'].append(new_poly)
+                if self.params['weights'] is not None:
+                    if mask_params['weights'] is None:
+                        mask_params['weights'] = []
+                    mask_params['weights'].append(self.params['weights'][tile_id])
 
-        return Mask(**mask_params)
+        # return Mask(**mask_params)
+        return mask_params
 
     def write(self, filename):
         """ Write the mask data in mosaic format. """
@@ -88,28 +102,29 @@ class Mosaic(object):
 
         out = StringIO.StringIO()
 
-        for poly in tile:
+        for poly in self.params['tile']:
+            poly = np.array(poly)
             print >>out, "poly", " ".join(["%f"%v for v in poly.flatten()])
         print >>out, "centers"
         for i in range(ntiles):
             print >>out, self.params['centers'][i][0], self.params['centers'][i][1],
 
             if self.params['orientations'] is None:
-                print 0,
+                print >>out, 0,
             else:
                 print >>out, self.params['orientations'][i],
 
             if self.params['sizes'] is None:
-                print 1,
+                print >>out, 1,
             else:
                 print >>out, self.params['sizes'][i],
 
             if self.params['weights'] is None:
-                print 1,
+                print >>out, 1,
             else:
                 print >>out, self.params['weights'][i],
 
-            print "" # end of line
+            print >>out, "" # end of line
 
         hash = hashlib.md5(out.getvalue()).hexdigest()
 
@@ -123,12 +138,15 @@ class Mosaic(object):
 
         out.close()
 
-        self.logger.info("Wrote {} polygons in tile and {} pointing centers from file {}".format(len(tile),len(centers),filename))
+        self.logger.info("Wrote {} polygons in tile and {} pointing centers from file {}".format(len(self.params['tile']),len(self.params['centers']),filename))
 
     def read(self, filename):
         """ Load a mosaic format file. """
         tile = []
         centers = []
+        orientations = []
+        sizes = []
+        weights = []
 
         t0 = time.time()
 
@@ -173,4 +191,11 @@ class Mosaic(object):
         input.close()
 
         self.logger.info("Loaded {} polygons in tile and {} pointing centers from file {} (file read time: {:3.1f}sec)".format(len(tile),len(centers),filename, time.time()-t0))
-        self.import_mosaic(tile, centers, orientations=orientations, sizes=sizes, weights=weights)
+
+        self.params['tile'] = tile
+        self.params['centers'] = centers
+        self.params['orientations'] = orientations
+        self.params['sizes'] = sizes
+        self.params['weights'] = weights
+
+        return self.generate_mask()
