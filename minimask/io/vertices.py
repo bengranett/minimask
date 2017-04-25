@@ -1,6 +1,8 @@
 import numpy as np
-from spherical_poly import spherical_polygon
-from mask import Mask
+import logging
+from minimask.spherical_poly import spherical_polygon
+import minimask.mask
+
 
 def vertices_to_mask(polygons, **metadata):
     """ Construct a mask from a list of longitude, latitude vertices representing
@@ -23,25 +25,25 @@ def vertices_to_mask(polygons, **metadata):
     -------
     Not enough vertices! if N<3.
     """
-    self.logger.debug("import %i polygons", len(polygons))
+    logging.debug("import %i polygons", len(polygons))
 
     params = {
         'polys': [],
     }
 
-    params.update(kwargs)
+    params.update(metadata)
 
     count = 0
     for i, vertices in enumerate(polygons):
         count += 1
-        if self.logger.isEnabledFor(logging.DEBUG):
-            step = max(1, len(polygons) // 10)
-            if not count % step:
-                self.logger.debug("count %i: %f %%", count, count * 100. / len(polygons))
+        # if logging.isEnabledFor(logging.DEBUG):
+            # step = max(1, len(polygons) // 10)
+            # if not count % step:
+                # logging.debug("count %i: %f %%", count, count * 100. / len(polygons))
 
         spoly = spherical_polygon(vertices)
         params['polys'].append(spoly)
 
-    self.logger.info("Loaded %i polygons", len(self.polygons))
+    logging.info("Loaded %i polygons", len(polygons))
 
-    return Mask(**params)
+    return minimask.mask.Mask(**params)

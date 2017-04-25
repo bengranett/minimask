@@ -46,7 +46,7 @@ class Mosaic(object):
                     'orientations': orientations,
                     'sizes': sizes,
                     'weights': weights
-                    }     
+                    }
 
     def generate_mask(self):
         """ Construct a mask from a tile that is replicated on the sky
