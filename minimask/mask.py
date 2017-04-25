@@ -3,10 +3,6 @@ import numpy as np
 import time
 import cPickle as pickle
 from sklearn.neighbors import KDTree
-from copy import deepcopy
-import cStringIO as StringIO
-import gzip
-import hashlib
 
 import io.mask_io as mask_io
 import sphere
