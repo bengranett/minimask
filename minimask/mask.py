@@ -8,6 +8,7 @@ import cStringIO as StringIO
 import gzip
 import hashlib
 
+import io.mask_io as mask_io
 import sphere
 from spherical_poly import spherical_polygon
 import healpix_projection as hp
@@ -170,16 +171,12 @@ class Mask(object):
 		except:
 			pass
 
-		try:
-			return self.load_mosaic(filename)
-		except:
-			pass
-
-		raise IOError("Cannot parse file: {}".format(filename))
+		params = mask_io.read(filename, format)
+		self.params.update(params)
 
 	def write(self, filename, format=None):
 		""" """
-		pass
+		mask_io.write(self, filename, format)
 
 	def contains(self, lon, lat, get_id=False):
 		""" Check if points are inside mask.
