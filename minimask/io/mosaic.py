@@ -6,12 +6,13 @@ import gzip
 import time
 from copy import deepcopy
 
-from ..spherical_poly import spherical_polygon
+from minimask.spherical_poly import spherical_polygon
+import minimask.mask
 
 def mosaic_to_mask(*args, **kwargs):
     """ """
-    return Mosaic(*args, **kwargs).generate_mask()
-
+    params = Mosaic(*args, **kwargs).generate_mask()
+    return minimask.mask.Mask(**params)
 
 class Mosaic(object):
     """ """
@@ -21,7 +22,7 @@ class Mosaic(object):
     canread = True
     canwrite = False
 
-    def __init__(self, tile=None, centers=None, orientations=None, sizes=None, weights=None):
+    def __init__(self, tile=[], centers=[], orientations=None, sizes=None, weights=None):
         """ Construct a mask from a tile that is replicated on the sky
         to form a mosaic.
 
@@ -92,7 +93,6 @@ class Mosaic(object):
                         mask_params['weights'] = []
                     mask_params['weights'].append(self.params['weights'][tile_id])
 
-        # return Mask(**mask_params)
         return mask_params
 
     def write(self, filename):

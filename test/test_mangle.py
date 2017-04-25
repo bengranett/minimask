@@ -7,35 +7,8 @@ import minimask.healpix_projection as hp
 import minimask.io.mosaic as mosaic
 
 
-def write_file(filename='test_file_mosaic.txt', nside=8):
+def write_file(filename='test_file_mangle.txt', nside=8):
 
-    tile = [[[-0.5, -0.5],[0.5, -0.5],[0.5,0.5],[-0.5,0.5]]]
-
-    grid = hp.HealpixProjector(nside=nside)
-
-    lon, lat = grid.pix2ang(np.arange(grid.npix))
-
-    centers = np.transpose([lon, lat])
-
-    M = mosaic.Mosaic(tile, centers)
-
-    M.write(filename)
-
-    return filename
-
-
-def test_mosaic():
-    filename = tempfile.NamedTemporaryFile(delete=False).name+".mask"
-
-    write_file(filename)
-
-    M = mask.Mask()
-    M.load(filename, format='mosaic')
-
-    os.unlink(filename)
-
-
-def test_mosaic2(nside=8):
     tile = [[[-0.5, -0.5],[0.5, -0.5],[0.5,0.5],[-0.5,0.5]]]
 
     grid = hp.HealpixProjector(nside=nside)
@@ -46,4 +19,18 @@ def test_mosaic2(nside=8):
 
     M = mosaic.mosaic_to_mask(tile, centers)
 
-    
+    M.write(filename, format='manglepoly')
+
+    return filename
+
+
+def test_mangle():
+    filename = tempfile.NamedTemporaryFile(delete=False).name+".mask"
+
+    write_file(filename)
+
+    M = mask.Mask()
+    M.load(filename, format='manglepoly')
+
+    os.unlink(filename)
+

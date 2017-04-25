@@ -1,10 +1,13 @@
 import numpy as np
+import logging
 
 from ..spherical_poly import spherical_polygon
 
 
-def ManglePolyIO(MaskIO):
+class ManglePolyIO(object):
     """ """
+    logger = logging.getLogger(__name__)
+
     name = 'mangle_poly'
     canread = True
     canwrite = True
@@ -21,16 +24,13 @@ def ManglePolyIO(MaskIO):
             Path to output file.
         """
         with open(filename, 'w') as out:
-            out.write("%i polygons\n" % len(mask.polygons))
-            for num in xrange(len(mask.polygons)):
-                poly = mask.polygons[num]
-                cm = mask.cap_cm[num]
-                ncaps = len(poly)
-                out.write("polygon %i ( %i caps, 1 weight, 0 pixel, 0 str):\n" % (num, ncaps))
-                for i in range(ncaps):
-                    x, y, z = np.transpose(poly[i])
-                    out.write("%3.15f %3.15f %3.15f %1.10f\n" % (x, y, z, cm[i]))
-        self.logger.info("Wrote %i polygons to %s", len(mask.polygons), filename)
+            out.write("%i polygons\n" % len(mask.params['polys']))
+            for num, poly in enumerate(mask.params['polys']):
+                out.write("polygon %i ( %i caps, 1 weight, 0 pixel, 0 str):\n" % (num, poly.ncaps))
+                for i in range(poly.ncaps):
+                    x, y, z = np.transpose(poly.caps[i])
+                    out.write("%3.15f %3.15f %3.15f %1.10f\n" % (x, y, z, poly.cap_cm[i]))
+        self.logger.info("Wrote %i polygons to %s", len(mask.params['polys']), filename)
 
     def read(self, filename):
         """ Read in a mask file in Mangle polygon format.
@@ -52,32 +52,38 @@ def ManglePolyIO(MaskIO):
             line = line.strip()
             if line.startswith("#"):
                 continue
+            line = line.replace(",", " ")
             words = line.split()
 
+            if len(words) < 3:
+                continue
+
             if words[0] == "polygon":
-                weight = 1
                 try:
-                    weight = float(words[2])
+                    weight = float(words[words.index('weight')-1])
                 except:
-                    continue
+                    weight = 1
                 weights.append(weight)
 
                 num += 1
                 if poly is not None:
-                    if len(poly) == 0:
+                    if poly.ncaps == 0:
                         self.logger.warning("Loading %s (line %i): polygon %i has no caps.",
                             filename, line_num, num)
                         continue
                     polygons.append(poly)
                 poly = spherical_polygon()
                 continue
-            x, y, z, c = [float(v) for v in w]
+            x, y, z, c = [float(v) for v in words]
             poly.add_cap(center=(x,y,z), theta=np.arccos(1-c)*180/np.pi)
         if poly is None:
             self.logger.warning("Failed loading %s: no polygons found!" % filename)
         polygons.append(poly)
         self.logger.info("Loaded %s and got %i polygons", filename, len(polygons))
 
-        params = {'poly': polygons}
+        params = {
+            'poly': polygons,
+            'weights': weights,
+        }
 
         return params
