@@ -18,8 +18,8 @@ The main operations to be carried out are:
 * query polygons that contain a given point
 * draw random samples of points from the area covered
 
-Examples
---------
+Quick start
+-----------
 
 Load a mask polygon file and generate uniform random samples:
 
@@ -32,6 +32,22 @@ Check if points are inside a polygon:
 >>> inside = M.contains(ra, dec)
 >>> print inside
 [ True  True  True ...,  True  True  True]
+
+Query weights:
+
+>>> w = M.get_combined_weight(ra, dec, operation='sum')
+
+Make plots:
+
+>>> healpy.mollview()
+>>> for x,y in M.render():
+>>>    healpy.projplot(x, y, lonlat=True)
+>>> pylab.show()
+
+Pixelize with healpix:
+
+>>> map = M.pixelize(nside=64)
+>>> healpy.mollview(map)
 
 Dependencies
 ------------
