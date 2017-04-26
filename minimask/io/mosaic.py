@@ -22,7 +22,7 @@ class Mosaic(object):
     canread = True
     canwrite = False
 
-    def __init__(self, tile=[], centers=[], orientations=None, sizes=None, weights=None):
+    def __init__(self, tile=[], centers=[], orientations=None, sizes=None, weights=None, **metadata):
         """ Construct a mask from a tile that is replicated on the sky
         to form a mosaic.
 
@@ -48,6 +48,8 @@ class Mosaic(object):
                     'weights': weights
                     }
 
+        self.metadata = metadata
+
     def generate_mask(self):
         """ Construct a mask from a tile that is replicated on the sky
         to form a mosaic.
@@ -70,6 +72,8 @@ class Mosaic(object):
             'polys': [],
             'weights': None,
         }
+
+        mask_params.update(self.metadata)
 
         poly_list = []
         for vertices in self.params['tile']:
