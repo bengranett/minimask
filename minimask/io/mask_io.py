@@ -1,3 +1,4 @@
+import os
 import logging
 
 import mosaic
@@ -12,6 +13,9 @@ registry = {
 
 def read(filename, format=None):
     """ """
+    if not os.path.exists(filename):
+        raise IOError("File does not exist: '%s'"%filename)
+
     if format is None:
         for format in registry.keys():
             loader = registry[format]()
