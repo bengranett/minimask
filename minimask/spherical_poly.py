@@ -10,7 +10,7 @@ class spherical_polygon(object):
     """
     logger = logging.getLogger(__name__)
 
-    def __init__(self, vertices=None):
+    def __init__(self, vertices=None, caps=None, lonlat=False):
         """ """
         self.cap_cm = []
         self.caps = []
@@ -20,6 +20,10 @@ class spherical_polygon(object):
 
         if vertices is not None:
             self.vertices_to_caps(vertices)
+
+        if caps is not None:
+            for center, theta in caps:
+                self.add_cap(center, theta, lonlat)
 
     def add_cap(self, center, theta, lonlat=False):
         """ Add a cap
@@ -192,7 +196,7 @@ class spherical_polygon(object):
             inside = np.logical_and(inside, (1 - np.dot(xyz, self.caps[j])) < self.cap_cm[j] * (1 + tol))
         return inside
 
-    def render(self, res=10):
+    def render(self, res=10, circle_max_res=120):
         """ Generate lon,lat points along the polygon edges for plotting purposes.
 
         Parameters
@@ -205,13 +209,18 @@ class spherical_polygon(object):
             return None
 
         if self.ncaps == 1:
+            if res <= 0:
+                res = circle_max_res
+
+            res = min(res, circle_max_res)
+
             cap = sphere.render_cap(self.caps[0], 1 - self.cap_cm[0], res=res)
             return cap
 
         vert = self.get_vertices()
 
         if res == 0:
-            return np.transpose(vert)
+            return np.transpose(np.vstack([vert,vert[0]]))
 
         assert(res > 0)
 
