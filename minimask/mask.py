@@ -20,6 +20,7 @@ class Mask(object):
 	logger = logging.getLogger(__name__)
 
 	def __init__(self,
+					filename=None,
 					polys=[],
 					weights=None,
 					metadata=None,
@@ -61,6 +62,9 @@ class Mask(object):
 
 		# initialize pixel mask
 		self.grid = hp.HealpixProjector(nside=self.config['pixel_mask_nside'], order=self.config['pixel_mask_order'])
+
+		if filename is not None:
+			self.load(filename)
 
 	def __len__(self):
 		""" Return number of polygons in mask. """
