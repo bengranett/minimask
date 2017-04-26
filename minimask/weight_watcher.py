@@ -47,7 +47,7 @@ def combine(weights, operation='sum'):
     else:
         op = operations[operation.lower()]
 
-    out = [op(w) for w in weights]
+    out = np.array([op(w) for w in weights])
 
     if single:
         return out[0]

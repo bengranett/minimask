@@ -3,6 +3,7 @@ import numpy as np
 import time
 import cPickle as pickle
 from sklearn.neighbors import KDTree
+import healpy
 
 import io.mask_io as mask_io
 import sphere
@@ -74,8 +75,16 @@ class Mask(object):
 
 	def append(self, mask):
 		""" Append another mask object to this one. """
-		self.params['polys'].append(mask.params['polys'])
+
+		npolys = len(self.params['polys'])
+
+		for poly in mask.params['polys']:
+			self.params['polys'].append(poly)
+
 		if mask.params['weights'] is not None:
+			if self.params['weights'] is None:
+				self.params['weights'] = np.ones(npolys)
+
 			self.params['weights'] = np.concatenate([self.params['weights'],
 													mask.params['weights']])
 		self.uninit()
@@ -316,7 +325,7 @@ class Mask(object):
 		return matches
 
 	def sample(self, density=None, n=None,
-							cell=None, nside=1, order=hp.RING):
+							cell=None, nside=None, order=None):
 		""" Draw longitude and latitude pairs uniformly inside the mask.
 
 		By default the points are drawn from the full sphere.  If a healpix cell
@@ -390,7 +399,7 @@ class Mask(object):
 			points.append(poly.render(res))
 		return points
 
-	def pixelize(self, nside=512, order=hp.RING, n=100):
+	def pixelize(self, nside=512, order=hp.RING, n=10, weight=True, operation='sum'):
 		""" Pixelize the mask using healpix.
 
 		Each healpix cell is sampled randomly with n points.
@@ -410,20 +419,41 @@ class Mask(object):
 		-------
 		numpy.ndarray : healpix map containing area fraction
 		"""
+		if self.params['pixel_mask'] is None:
+			self._build_pixel_mask()
+
+		pixel_mask = healpy.ud_grade(self.params['pixel_mask'].astype('d'),
+						order_in=self.grid.order,
+						nside_out=nside,
+						order_out=order,
+						)
+
+		if np.sum(pixel_mask) == 0:
+			logging.warning("degraded pixel mask is all zero")
+
 		grid = hp.HealpixProjector(nside=nside, order=order)
 
 		out = np.zeros(grid.npix, dtype='d')
 
-		for pixel in np.arange(grid.npix):
-			ra, dec = self.sample(n=n, cell=[pixel], nside=nside, order=order)
+		cells = np.where(pixel_mask > 0)[0]
 
-			try:
-				len(ra)
-			except:
-				print ra
-				print dec
-				raise
+		for pixel in cells:
 
-			out[pixel] = len(ra) * 1. / n
+			ra, dec = grid.random_sample(pixel, n)
+
+			sel = self.contains(ra, dec)
+
+			ra = ra[sel]
+			dec = dec[sel]
+
+			if len(ra) == 0:
+				continue
+
+			if weight:
+				w = self.get_combined_weight(ra, dec, operation=operation)
+
+				out[pixel] = np.mean(w)
+			else:
+				out[pixel] = len(ra) * 1./ n
 
 		return out
