@@ -95,6 +95,37 @@ class Mosaic(object):
 
         return mask_params
 
+    def check_file(self, filename, nbytes=1000):
+        """ Check if the file looks like the right format."""
+        self.logger.debug("Checking format...")
+
+        try:
+            gzip.open(filename).readline()
+            input = gzip.open(filename)
+        except IOError:
+            input = file(filename)
+
+
+        data = input.read(nbytes)
+
+        lc = 0
+        for line in data.split("\n"):
+            line = line.strip()
+            if line == "": continue
+            if line.startswith("#"): continue
+
+            lc += 1
+
+            if lc > 1:
+                break
+
+            words = line.split()
+
+            if lc == 1:
+                if not words[0] == 'poly':
+                    return False
+        return True
+
     def write(self, filename):
         """ Write the mask data in mosaic format. """
 

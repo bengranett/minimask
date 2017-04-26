@@ -12,6 +12,45 @@ class ManglePolyIO(object):
     canread = True
     canwrite = True
 
+    def check_file(self, filename, nbytes=1000):
+        """ Check if the file looks like mangle format. """
+        self.logger.debug("Checking format...")
+
+        data = file(filename).read(nbytes)
+
+        lc = 0
+        for line in data.split("\n"):
+            line = line.strip()
+            if line == "": continue
+            if line.startswith("#"): continue
+
+            lc += 1
+
+            if lc > 3:
+                break
+
+            words = line.split()
+
+            if lc == 1:
+                if not words[1] == "polygons":
+                    return False
+                try:
+                    int(words[0])
+                except ValueError:
+                    return False
+                continue
+
+            if lc == 2:
+                if not words[0] == "polygon":
+                    return False
+                continue
+
+            if lc == 3:
+                if len(words) != 4:
+                    return False
+
+        return True
+
     def write(self, mask, filename):
         """ Write out a mask file in text format compatable with the Mangle
         polygon format.
