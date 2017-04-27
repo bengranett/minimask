@@ -44,10 +44,20 @@ Make plots:
 >>>    healpy.projplot(x, y, lonlat=True)
 >>> pylab.show()
 
+.. image:: docs/images/demo_mask.png
+        :alt: demo mask plot
+        :align: center
+
+
 Pixelize with healpix:
 
 >>> map = M.pixelize(nside=64)
 >>> healpy.mollview(map)
+
+.. image:: docs/images/demo_mask_pix.png
+        :alt: demo mask plot
+        :align: center
+
 
 Dependencies
 ------------
