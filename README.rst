@@ -18,6 +18,11 @@ The main operations to be carried out are:
 * query polygons that contain a given point
 * draw random samples of points from the area covered
 
+Demos
+-----
+Check out the python notebooks in the `demos/` subdirectory.  They may be viewed online:
+http://nbviewer.jupyter.org/github/bengranett/minimask/tree/master/demos/
+
 Quick start
 -----------
 
