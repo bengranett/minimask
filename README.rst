@@ -46,7 +46,6 @@ Make plots:
 
 .. image:: docs/images/demo_mask.png
         :alt: demo mask plot
-        :width: 50%
         :align: center
 
 
@@ -57,7 +56,6 @@ Pixelize with healpix:
 
 .. image:: docs/images/demo_mask_pix.png
         :alt: demo mask plot
-        :width: 50%
         :align: center
 
 
