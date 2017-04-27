@@ -46,7 +46,7 @@ Make plots:
 
 .. image:: docs/images/demo_mask.png
         :alt: demo mask plot
-        :align: middle
+        :align: center
 
 
 Pixelize with healpix:
@@ -56,7 +56,7 @@ Pixelize with healpix:
 
 .. image:: docs/images/demo_mask_pix.png
         :alt: demo mask plot
-        :align: middle
+        :align: center
 
 
 Dependencies
