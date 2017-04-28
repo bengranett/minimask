@@ -187,7 +187,7 @@ class Mask(object):
 		""" """
 		mask_io.write(self, filename, format)
 
-	def contains(self, lon, lat, get_id=False):
+	def contains(self, lon, lat, get_id=False, get_weights=False):
 		""" Check if points are inside mask.
 
 		Parameters
@@ -263,7 +263,7 @@ class Mask(object):
 		else:
 			out = [np.take(self.params['weights'], ids) for ids in poly_ids]
 
-		return out
+		return inside, out
 
 	def get_combined_weight(self, lon, lat, operation='sum'):
 		""" Return the combined weight of all polygons containing a point.
@@ -282,8 +282,8 @@ class Mask(object):
 		array
 		"""
 
-		weights = self.get_weight(lon, lat)
-		return weight_watcher.combine(weights, operation)
+		inside, weights = self.get_weight(lon, lat)
+		return inside, weight_watcher.combine(weights, operation)
 
 	def sample(self, density=None, n=None,
 							cell=None, nside=None, order=None):
@@ -404,19 +404,18 @@ class Mask(object):
 
 			ra, dec = grid.random_sample(pixel, n)
 
-			sel = self.contains(ra, dec)
-
-			ra = ra[sel]
-			dec = dec[sel]
-
-			if len(ra) == 0:
-				continue
-
 			if weight:
-				w = self.get_combined_weight(ra, dec, operation=operation)
+				sel, w = self.get_combined_weight(ra, dec)
 
+				w = w[sel]
+				if len(w) == 0:
+					continue
 				out[pixel] = np.mean(w)
 			else:
+				sel = self.contains(ra, dec)
+				ra = ra[sel]
+				if len(ra) == 0:
+					continue
 				out[pixel] = len(ra) * 1./ n
 
 		return out

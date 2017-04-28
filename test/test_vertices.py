@@ -12,4 +12,4 @@ def test():
 
     x, y = M.sample(n=1000)
 
-    w = M.get_combined_weight(x, y, operation='and')
+    inside, w = M.get_combined_weight(x, y, operation='and')

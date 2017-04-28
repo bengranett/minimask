@@ -27,10 +27,10 @@ def test_mask_sample():
     r = M.contains(x, y)
     yield check, np.sum(r) == len(x)
 
-    w = M.get_weight(x, y)
+    inside, w = M.get_weight(x, y)
     yield check, np.allclose(w, np.ones((len(w), 2)))
 
-    w = M.get_combined_weight(x, y, operation='sum')
+    inside, w = M.get_combined_weight(x, y, operation='sum')
     yield check, np.allclose(w, 2 * np.ones(len(w)))
 
 

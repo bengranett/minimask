@@ -37,7 +37,7 @@ def combine(weights, operation='sum'):
     single = False
 
     try:
-        v = weights[0][0]
+        v = len(weights[0])
     except TypeError:
         weights = [weights]
         single = True
