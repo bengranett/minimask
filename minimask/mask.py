@@ -285,49 +285,6 @@ class Mask(object):
 		weights = self.get_weight(lon, lat)
 		return weight_watcher.combine(weights, operation)
 
-	def _select_cells(self, coarse_cell, coarse_nside, coarse_order):
-		""" Private function returns list of cells in the internal healpix map
-		that fall in a given patch of sky.
-
-		The resoultion of the internal map must be higher than the coarse resolution
-		input here.
-
-		Parameters
-		----------
-		coarse_cell : int
-			cell number or list defining patch of sky
-		coarse_nside : int
-			nside of pixelization
-		coarse_order : str
-			pixelization order ('ring' or 'nest')
-
-		Returns
-		-------
-		list : cell indices in pixel map
-		"""
-		# If the resolution given is higher than the internal pixel map,
-		# rebuild the map at an even higher resolution.
-		if coarse_nside > self.grid.nside:
-			self.grid = hp.HealpixProjector(nside=2 * coarse_nside, order=coarse_order)
-			self._build_pixel_mask()
-
-		# make sure input is iterable
-		if misc.is_number(coarse_cell):
-			coarse_cell = [int(coarse_cell)]
-
-		coarse_grid = hp.HealpixProjector(nside=coarse_nside, order=coarse_order)
-		radius = coarse_grid.pixel_size
-
-		xyz = np.transpose(coarse_grid.pix2vec(coarse_cell))
-		matches = self.params['pixel_lookup'].query_radius(xyz, radius)
-		matches = np.concatenate(matches)
-
-		xyz = np.take(self.params['pixel_lookup'].data, matches, axis=0)
-		pix = coarse_grid.vec2pix(*xyz.transpose())
-		ii = pix == coarse_cell
-		matches = self.params['survey_cells'][matches[ii]]
-		return matches
-
 	def sample(self, density=None, n=None,
 							cell=None, nside=None, order=None):
 		""" Draw longitude and latitude pairs uniformly inside the mask.
@@ -362,7 +319,9 @@ class Mask(object):
 			cell = self.params['survey_cells']   # full sky
 		else:
 			# sample only selected patches defined by a healpix cell
-			cell = self._select_cells(cell, nside, order)
+			cell = self.grid.select_cells(nside, order)
+			sel = self.params['pixel_map'][cell] > 0
+			cell = cell[sel]
 
 		if len(cell) == 0:
 			# if there are no cells return empty arrays

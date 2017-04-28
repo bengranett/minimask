@@ -369,3 +369,45 @@ class HealpixProjector:
 
 	# we are open to spelling variations
 	query_disk = query_disc
+
+	def select_cells(self, coarse_cell, coarse_nside, coarse_order=None):
+		""" Returns the list of cells that fall in a (larger) cell.
+
+		Notes
+		-----
+		Require coarse_nside < HealpixProjector.nside
+
+		Parameters
+		----------
+		coarse_cell : int
+			cell number or list defining patch of sky
+		coarse_nside : int
+			nside of pixelization
+		coarse_order : str
+			pixelization order ('ring' or 'nest')
+
+		Returns
+		-------
+		list : cell indices in pixel map
+		"""
+		if coarse_order is None:
+			coarse_order = self.order
+
+		if coarse_nside >= self.nside:
+			raise ValueError("coarse_nside must be lower than HealpixProjector.nside")
+
+		# make sure input is iterable
+		if misc.is_number(coarse_cell):
+			coarse_cell = [int(coarse_cell)]
+
+		coarse_grid = HealpixProjector(nside=coarse_nside, order=coarse_order)
+
+		coarse_map = np.zeros(coarse_grid.npix, dtype='d')
+		for cell in coarse_cell:
+			coarse_map[cell] = 1
+
+		map = healpy.ud_grade(coarse_map, order_in=coarse_order, order_out=self.order, nside_out=self.nside)
+
+		pix = np.where(map > 0)[0]
+
+		return pix
