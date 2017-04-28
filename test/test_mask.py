@@ -33,6 +33,9 @@ def test_mask_sample():
     inside, w = M.get_combined_weight(x, y, operation='sum')
     yield check, np.allclose(w, 2 * np.ones(len(w)))
 
+    x, y = M.sample(density=1000)
+    yield check, np.abs(len(x) - 100000) < 1000
+
 
 def test_mask():
     """ check empty mask """

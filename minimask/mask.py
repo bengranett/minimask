@@ -286,7 +286,8 @@ class Mask(object):
 		return inside, weight_watcher.combine(weights, operation)
 
 	def sample(self, density=None, n=None,
-							cell=None, nside=None, order=None):
+							cell=None, nside=None, order=None,
+							min_sample=100, max_loops=10):
 		""" Draw longitude and latitude pairs uniformly inside the mask.
 
 		By default the points are drawn from the full sphere.  If a healpix cell
@@ -333,14 +334,42 @@ class Mask(object):
 		else:
 			n_cells = len(cell)
 
+		density_mode = False
+
 		if density is not None:
+			density_mode = True
 			n = int(SPHERE_AREA * 1. / self.grid.npix * n_cells * density)
 
-		lon, lat = self.grid.random_sample(cell, n)
+		lon_out = []
+		lat_out = []
 
-		sel = self.contains(lon, lat)
+		count = 0
+		loop = 0
+		while count < n:
+			remaining = max(min_sample, n - count)
+			lon, lat = self.grid.random_sample(cell, remaining)
 
-		return lon[sel], lat[sel]
+			sel = self.contains(lon, lat)
+			lon, lat = lon[sel], lat[sel]
+			count += len(lon)
+
+			lon_out.append(lon)
+			lat_out.append(lat)
+
+			if density is not None:
+				break
+
+			if loop > max_loops:
+				raise Exception("sample hit max loops! %i"%max_loops)
+
+		lon_out = np.concatenate(lon_out)
+		lat_out = np.concatenate(lat_out)
+
+		if not density_mode:
+			lon_out = lon_out[:n]
+			lat_out = lat_out[:n]
+
+		return lon_out, lat_out
 
 	draw_random_position = sample
 
