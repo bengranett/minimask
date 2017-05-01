@@ -1,7 +1,9 @@
 minimask
 =======================
-
 Light-weight routines for processing sky survey masks
+
+.. image:: https://travis-ci.org/bengranett/minimask.svg?branch=master
+    :target: https://travis-ci.org/bengranett/minimask
 
 Philosophy 
 ---------- 
