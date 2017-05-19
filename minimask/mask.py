@@ -448,3 +448,29 @@ class Mask(object):
 				out[pixel] = len(ra) * 1./ n
 
 		return out
+
+	def get_polyid_in_cap(self, lon, lat, theta):
+		""" Return a list of polygon ids with centers inside the cap
+
+		Parameters
+		----------
+		lon : float
+			cap center longitude coordinate
+		lat : float
+			cap center latitude coordinate
+		theta : float
+			cap opening angle (degree)
+
+		Returns
+		-------
+		indices : list of polygon indices
+		"""
+		if self.params['lookup_tree'] is None:
+			self._build_lookup_tree()
+
+		xyz = sphere.lonlat2xyz(lon, lat)
+		r = np.pi / 180 * theta
+
+		matches = self.params['lookup_tree'].query_radius([xyz], r)[0]
+
+		return matches
