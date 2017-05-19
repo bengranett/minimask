@@ -283,7 +283,13 @@ class HealpixProjector:
 		xt = x[pole] % (np.pi / 2)
 		a = np.abs(y[pole]) - np.pi / 4
 		b = np.abs(y[pole]) - np.pi / 2
-		phi[pole] = x[pole] - a / b * (xt - np.pi / 4)
+
+		nonzero = b != 0
+		ab = np.zeros(len(a))
+		ab[nonzero] = a[nonzero] / b[nonzero]
+		assert np.all(np.isfinite(ab))
+
+		phi[pole] = x[pole] - ab * (xt - np.pi / 4)
 
 		z[pole] = (1 - 1. / 3. * (2 - 4 * np.abs(y[pole]) / np.pi)**2) * y[pole] / np.abs(y[pole])
 
