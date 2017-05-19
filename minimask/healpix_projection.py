@@ -330,14 +330,13 @@ class HealpixProjector:
 				ra = phi * self.rad2deg
 				dec = 90 - theta * self.rad2deg
 
-				corners.append([ra,dec])
+				# compute distance from center to corners
+				r = sphere.distance(ra_c, dec_c, ra, dec)
+				corners.append(r)
 
-		r1 = sphere.distance(*(corners[0] + corners[3]))
-		r2 = sphere.distance(*(corners[1] + corners[2]))
+		r = max(corners)
 
-		r = max(r1, r2)
-
-		return ra_c, dec_c, r / 2.
+		return ra_c, dec_c, r
 
 	def random_sample(self, pixels, n=1e5):
 		""" Random sample points inside a healpixel.
