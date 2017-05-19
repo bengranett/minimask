@@ -1,6 +1,7 @@
 import numpy as np
 import healpy
 import misc
+import sphere
 
 # Pixel ordering modes
 NEST = 'nest'
@@ -293,6 +294,44 @@ class HealpixProjector:
 	def pixel_boundaries(self):
 		""" Compute boundaries of Healpix cells. Not implemented."""
 		raise Exception("not implemented")
+
+	def get_cap(self, id):
+		""" Return the spherical cap that encloses the pixel.
+
+		Parameters
+		----------
+		id : int
+			healpix index
+
+		Returns
+		-------
+		lon, lat, theta
+		"""
+		ra_c, dec_c = self.pix2ang(id)
+
+		# compute pixel center in healpix projection
+		x, y = self._phitheta2xy(ra_c*self.deg2rad, (90-dec_c)*self.deg2rad)
+
+		# size of pixels
+		h = np.pi / 4. / self.nside
+
+		corners = []
+
+		for off_x in (-h, h):
+			for off_y in (-h, h):
+
+				phi, theta = self._xy2phitheta(x + off_x, y + off_y)
+				ra = phi * self.rad2deg
+				dec = 90 - theta * self.rad2deg
+
+				corners.append([ra,dec])
+
+		r1 = sphere.distance(*(corners[0] + corners[3]))
+		r2 = sphere.distance(*(corners[1] + corners[2]))
+
+		r = max(r1, r2)
+
+		return ra_c, dec_c, r / 2.
 
 	def random_sample(self, pixels, n=1e5):
 		""" Random sample points inside a healpixel.
