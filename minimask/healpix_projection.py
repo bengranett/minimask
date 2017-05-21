@@ -137,6 +137,8 @@ class HealpixProjector:
 		--------
 		number of pixels : int
 		"""
+		if nside == 0:
+			return 1
 		return 12 * nside * nside
 
 	def ang2pix(self, lon, lat):
@@ -434,11 +436,14 @@ class HealpixProjector:
 		-------
 		list : cell indices in pixel map
 		"""
+		if coarse_nside == 0:
+			return np.arange(self.npix, dtype=int)
+
 		if coarse_order is None:
 			coarse_order = self.order
 
 		if coarse_nside >= self.nside:
-			raise ValueError("coarse_nside must be lower than HealpixProjector.nside")
+			raise ValueError("coarse_nside (%s) must be lower than HealpixProjector.nside (%s)"%(coarse_nside, self.nside))
 
 		# make sure input is iterable
 		if misc.is_number(coarse_cell):
