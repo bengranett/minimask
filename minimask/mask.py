@@ -320,8 +320,8 @@ class Mask(object):
 			cell = self.params['survey_cells']   # full sky
 		else:
 			# sample only selected patches defined by a healpix cell
-			cell = self.grid.select_cells(nside, order)
-			sel = self.params['pixel_map'][cell] > 0
+			cell = self.grid.select_cells(cell, nside, order)
+			sel = self.params['pixel_mask'][cell] > 0
 			cell = cell[sel]
 
 		if len(cell) == 0:
