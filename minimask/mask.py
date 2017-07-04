@@ -298,10 +298,17 @@ class Mask(object):
 		After drawing randoms the ones that fall outside the polygon mask are
 		discarded.
 
+		Notes
+		-----
+		Either density or n must be given as argument.  If both are given,
+		density will be used.
+
 		Parameters
 		----------
 		density : float
 			number density of samples (number per square degree)
+		n : int
+			number of samples to draw (only used if density is not given)
 		cell : int or list
 			optional healpix cell number or list of cell numbers
 		nside : int
@@ -312,7 +319,33 @@ class Mask(object):
 		Returns
 		-------
 		lon, lat : random coordinates
+
+		Raises
+		------
+		ValueError : if neither density or n are given
+		TypeError : if n cannot be cast to integer type
+
 		"""
+		if density is None and n is None:
+			raise ValueError("sample has missing required argument.  Please pass density or n")
+
+		if (density is not None):
+			try:
+				float(density)
+			except ValueError:
+				raise ValueError("Sample density must be a number, not '%s'"%str(density))
+			if density < 0 or not np.isfinite(density):
+				raise ValueError("Sample density must be positive, not '%s'"%str(density))
+
+		if n is not None:
+			try:
+				float(n)
+			except ValueError:
+				raise ValueError("Sample n must be a number, not '%s'"%str(n))
+
+			if n < 0 or not np.isfinite(n):
+				raise ValueError("Sample n must be positive, not %s"%str(n))
+
 		if self.params['pixel_mask'] is None:
 			self._build_pixel_mask()
 
@@ -336,9 +369,20 @@ class Mask(object):
 
 		density_mode = False
 
-		if density is not None:
+		if density is not None and density >= 0:
 			density_mode = True
 			n = int(SPHERE_AREA * 1. / self.grid.npix * n_cells * density)
+
+		try:
+			n = int(n)
+		except ValueError:
+			raise ValueError("Sample count must be a number, not '%s'"%type(n))
+
+		if n < 0:
+			raise ValueError("Sample count must be greater than 0, not %s"%str(n))
+
+		if n == 0:
+			return np.array([]), np.array([])
 
 		lon_out = []
 		lat_out = []
@@ -356,7 +400,7 @@ class Mask(object):
 			lon_out.append(lon)
 			lat_out.append(lat)
 
-			if density is not None:
+			if density_mode:
 				break
 
 			if loop > max_loops:

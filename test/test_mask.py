@@ -49,3 +49,48 @@ def test_mask():
     yield check, np.abs(y.min() + 90) < 10
     yield check, np.abs(x.max() - 360) < 10
     yield check, np.abs(y.max() - 90) < 10
+
+def test_undefined():
+    M = Mask()
+    x, y = M.sample(n=0)
+    yield check, len(x) == 0
+
+    x, y = M.sample(density=0)
+    yield check, len(x) == 0
+
+    try:
+        x, y = M.sample()
+    except ValueError:
+        pass
+
+    try:
+        x, y = M.sample(n='hi')
+    except ValueError:
+        pass
+
+    try:
+        x, y = M.sample(density='hi')
+    except ValueError:
+        pass
+
+    try:
+        x, y = M.sample(n=-1)
+    except ValueError:
+        pass
+
+    try:
+        x, y = M.sample(density=-1)
+    except ValueError:
+        pass
+
+    try:
+        x, y = M.sample(density=float('nan'))
+    except ValueError:
+        pass
+
+    try:
+        x, y = M.sample(n=float('nan'))
+    except ValueError:
+        pass
+
+
