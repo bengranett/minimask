@@ -121,7 +121,7 @@ class ManglePolyIO(object):
         self.logger.info("Loaded %s and got %i polygons", filename, len(polygons))
 
         params = {
-            'poly': polygons,
+            'polys': polygons,
             'weights': weights,
         }
 
