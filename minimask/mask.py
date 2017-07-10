@@ -28,7 +28,7 @@ class Mask(object):
 					survey_cells=[],
 					pixel_lookup=None,
 					pixel_mask=None,
-					pixel_mask_nside=256,
+					pixel_mask_nside=8,
 					pixel_mask_order='ring'):
 		""" Routines to process polygon masks.
 
