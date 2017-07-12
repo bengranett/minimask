@@ -5,7 +5,7 @@ pipeline {
             steps {
                 echo sh(returnStdout: true, script: 'env')
 
-                slackSend "Build Started - ${env.JOB_NAME} ${env.BUILD_NUMBER} ${env.BRANCH_NAME} (<${env.BUILD_URL}|Open>)"
+                slackSend "Build Started :dog: - ${env.JOB_NAME} ${env.BUILD_NUMBER} ${env.BRANCH_NAME} (<${env.BUILD_URL}|Open>)"
 
                 sh '''
                     conda create --yes -n ${BUILD_TAG} python
@@ -35,16 +35,16 @@ pipeline {
             '''
         }
         success {
-            slackSend "Passed! - ${env.JOB_NAME} ${env.BUILD_NUMBER} ${env.BRANCH_NAME} (<${env.BUILD_URL}|Open>)"
+            slackSend "Passed! :smile: - ${env.JOB_NAME} ${env.BUILD_NUMBER} ${env.BRANCH_NAME} (<${env.BUILD_URL}|Open>)"
         }
         unstable {
-            slackSend "Unstable! - ${env.JOB_NAME} ${env.BUILD_NUMBER} ${env.BRANCH_NAME} (<${env.BUILD_URL}|Open>)"
+            slackSend "Unstable! :hear_no_evil: - ${env.JOB_NAME} ${env.BUILD_NUMBER} ${env.BRANCH_NAME} (<${env.BUILD_URL}|Open>)"
         }
         failure {
-            slackSend "Failed! - ${env.JOB_NAME} ${env.BUILD_NUMBER} ${env.BRANCH_NAME} (<${env.BUILD_URL}|Open>)"
+            slackSend "Failed! :scream: - ${env.JOB_NAME} ${env.BUILD_NUMBER} ${env.BRANCH_NAME} (<${env.BUILD_URL}|Open>)"
         }
         changed {
-            slackSend "Changed! - ${env.JOB_NAME} ${env.BUILD_NUMBER} ${env.BRANCH_NAME} (<${env.BUILD_URL}|Open>)"
+            slackSend "Changed! :thinking_face: - ${env.JOB_NAME} ${env.BUILD_NUMBER} ${env.BRANCH_NAME} (<${env.BUILD_URL}|Open>)"
         }
 
     }
