@@ -212,6 +212,7 @@ def render_cap(center, costheta, phi_limits=(0, 360), res=10., lonlat=False):
 	else:
 		center_lon, center_lat = center
 
+
 	if phi_limits[1] - phi_limits[0] != 360:
 		phi_limits = (phi_limits[0] % 360, phi_limits[1] % 360)
 
@@ -233,4 +234,5 @@ def render_cap(center, costheta, phi_limits=(0, 360), res=10., lonlat=False):
 
 	xyz_r = rotate_xyz(x, y, z, angles=[(0, -360+center_lon, -90 + center_lat)], inverse=False)
 
-	return xyz2lonlat(*xyz_r)
+	lon,lat = xyz2lonlat(*xyz_r)
+	return lon%360, lat

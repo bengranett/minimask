@@ -191,7 +191,8 @@ class spherical_polygon(object):
         if len(xyz.shape) == 1:
             inside = True
         else:
-            inside = np.ones(xyz.shape[1])
+            inside = np.ones(xyz.shape[0])
+
         for j in range(self.ncaps):
             inside = np.logical_and(inside, (1 - np.dot(xyz, self.caps[j])) < self.cap_cm[j] * (1 + tol))
         return inside
